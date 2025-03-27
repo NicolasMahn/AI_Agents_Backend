@@ -1,0 +1,7 @@
+# Dockerfile for a custom Python image with common libraries pre-installed
+# Build with: docker build -f CustomPythonDockerfile -t custom-python .
+
+FROM python:3.9-slim
+RUN pip install --no-cache-dir pandas numpy matplotlib seaborn plotly dash scikit-learn datetime
+WORKDIR /code
+CMD ["python"]

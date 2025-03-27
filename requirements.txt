@@ -1,0 +1,7 @@
+flask
+chromadb
+openai
+tiktoken
+google-genai
+docker
+pandas
