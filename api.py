@@ -1,7 +1,8 @@
+import os
 import threading
 import time
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 
 import agent_manager
 import agent_objs
@@ -109,6 +110,31 @@ def does_agent_code(url_agent_name):
     agent = agent_manager.get_agent(agent)
     return jsonify(agent.does_agent_code())
 
+@app.route('/get_available_models', methods=['GET'])
+def get_available_models():
+    return agent_manager.get_available_models()
+
+@app.route('/set_model/<model>', methods=['POST'])
+def set_model(model):
+    if agent_manager.set_model(model):
+        print(f'Model set to `{model}`')
+        return jsonify({'message': f'Model set to `{model}`'})
+    else:
+        print(f'Model `{model}` not available')
+        return jsonify({'error': f'Model `{model}` not available'}), 404
+
+@app.route('/<url_agent_name>/get_file/<path:filename>', methods=['GET'])
+def get_file(url_agent_name, filename):
+    agent_name = decode_url_str(url_agent_name)
+    agent = agent_manager.get_agent(agent_name)
+    if agent:
+        file_path = os.path.join(agent.agent_dir, filename)
+        if os.path.exists(file_path):
+            return send_file(file_path)
+        else:
+            return jsonify({'error': f'File `{filename}` not found'}), 404
+    else:
+        return jsonify({'error': f'Agent `{agent_name}` not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)

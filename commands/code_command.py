@@ -2,22 +2,11 @@ import xml.etree.ElementTree as ET
 
 from agent_objs.code import Code
 from config import DEBUG
-
-WHITE = "\033[97m"
-BLUE = "\033[34m"
-GREEN = "\033[32m"
-ORANGE = "\033[38;5;208m"
-PINK = "\033[38;5;205m"
-RED = "\033[31m"
-RESET = "\033[0m"
+from util.colors import WHITE, GREEN, RESET
 
 
 def execute_code_command(command: ET, agent):
     attr = command.attrib
-    if "input" in attr:
-        input_vars = attr["input"]
-    else:
-        input_vars = None
 
     if "output" in attr:
         output_vars = attr["output"]
@@ -43,6 +32,17 @@ def execute_code_command(command: ET, agent):
         frontend = True
     else:
         frontend = False
+
+    if "input_files" in attr:
+        input_files = attr["input_files"]
+        print()
+    else:
+        input_files = None
+
+    if "output_files" in attr:
+        output_files = attr["output_files"]
+    else:
+        output_files = None
 
     code_imports = []
     if "import" in attr:
@@ -80,8 +80,8 @@ def execute_code_command(command: ET, agent):
 
     code = command.text
 
-    code_obj = Code(code, input_vars, output_vars, requirements, code_imports, previous_outputs, agent, version, tag,
-                    frontend=frontend)
+    code_obj = Code(code, output_vars, requirements, code_imports, previous_outputs, input_files,
+                    output_files, agent, version, tag, frontend)
     code_obj.execute_code()
     agent.add_code(code_obj)
 

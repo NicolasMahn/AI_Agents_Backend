@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 from typing import Optional, Any
@@ -12,7 +13,7 @@ class Chat(list):
 
     def __init__(self, chat_name: str = None, chat_dir: str = "projects"):
         self.chat_name = chat_name
-        self.chat_file = f"{chat_dir}/{chat_name}.json"
+        self.chat_file = os.path.join(chat_dir, f"{chat_name}.json")
         super().__init__(self.restore_chat_history())
         pass
 

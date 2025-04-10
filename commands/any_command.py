@@ -16,20 +16,17 @@ def execute_command(command: ET, agent) -> str:
         from commands import execute_short_memory_command
         return execute_short_memory_command(command, agent)
     elif command.tag == "long_memory":
-        return "Long term memory is not yet implemented."
-        # TODO: add long memory
+        from commands import execute_long_memory_command
+        return execute_long_memory_command(command, agent)
     elif command.tag == "document":
-        return "Document search is not yet implemented."
-        # TODO: add document search
+        from commands import execute_document_command
+        return execute_document_command(command, agent)
     elif command.tag == "query":
-        return "Query is not yet implemented."
-        # TODO: add query
+        from commands import execute_query_command
+        return execute_query_command(command, agent)
     elif command.tag == "search":
         return "Search is not yet implemented."
         # TODO: add search
-    elif command.tag == "second_opinion":
-        return "Second Option is not yet implemented."
-        # TODO: add second opinion
     elif command.tag == "code":
         from commands import execute_code_command
         return execute_code_command(command, agent)

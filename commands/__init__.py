@@ -3,3 +3,6 @@ from .code_command import execute_code_command
 from .short_memory_command import execute_short_memory_command
 from .response_command import execute_response_command
 from .plan_command import execute_plan_command, execute_next_step_command
+from .query_command import execute_query_command
+from .long_memory_command import execute_long_memory_command
+from .document_command import execute_document_command
