@@ -5,8 +5,10 @@ from typing import Optional, Any
 
 from typing_extensions import override
 
+import config
 import util
 from llm_functions import count_context_length
+from util.colors import PINK, RESET
 
 
 class Chat(list):
@@ -58,14 +60,29 @@ class Chat(list):
                 return message
         return None
 
+    def get_last_messages_of_sender(self, sender: str):
+        if self.chat_name != "Clean Chat":
+            print(f"{PINK}Warning: This method is only intended, and will likely only work, for the Clean Chat! {RESET}")
+
+        messages = []
+        for message in reversed(self):
+            if message['sender'] == "System":
+                continue
+            elif message['sender'] == sender:
+                if count_context_length(message['text'] + str(messages)) < config.max_prompt_tokens:
+                    messages.append(message)
+            else:
+                break
+        return messages
+
     def get_last_n_tokens_in_xml_str(self, n: int):
         xml_str = ""
         for i in range(n):
             try:
-                last_message = self[-i]
+                last_message = self[i]
             except IndexError:
                 break
-            xml_str_message = f"    <message sender='{last_message['sender']}'>{last_message['text']}</message>"
+            xml_str_message = f"    <message sender='{last_message['sender']}'>\n<![CDATA[\n{last_message['text']}\n]]>\n</message>"
             tmp_xml_str = f"{xml_str_message}\n{xml_str}"
             if count_context_length(tmp_xml_str) > (n-100):
                 omitted_messages = f"    <message sender='System'>Omitted {len(self) - i} messages</message>"

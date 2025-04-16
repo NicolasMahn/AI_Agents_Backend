@@ -15,3 +15,5 @@ pdfminer.six
 Pillow
 tabulate
 PyPDF2
+BeautifulSoup4
+playwright

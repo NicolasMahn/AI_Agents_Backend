@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 def execute_query_command(command: ET, agent) -> str:
     query = command.text
 
-    if "type" in command.attrib:
+    if "type" in command.attrib and command.attrib["type"] in ["documents", "memory"]:
         query_type = command.attrib["type"]
     else :
         query_type = "documents"

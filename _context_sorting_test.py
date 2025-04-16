@@ -23,7 +23,7 @@ fig = go.Figure(data=go.Heatmap(
     reversescale=True,
     colorbar=dict(title='Score')
 ))
-
+'''
 # Add a contour line for the threshold
 threshold = 0.7
 fig.add_trace(go.Contour(
@@ -38,12 +38,16 @@ fig.add_trace(go.Contour(
     ),
     line=dict(color='black', width=2),
     showscale=False
-))
+))'''
 
 fig.update_layout(
-    title='Heatmap: 1 / (1 + np.exp( -0.01 * ( L**2 + I**2 + (np.maximum(0, I - 8.5))**4 ) ))',
-    xaxis_title='Importance',
-    yaxis_title='Last Interaction',
+    title=dict(
+        text='Heatmap',  # Main title
+        font=dict(size=20),  # Adjust the font size for the main title
+        x=0.5
+    ),
+    xaxis_title='Importance (I)',
+    yaxis_title='Last Interaction (L)',
     height=600,
     width=800
 )

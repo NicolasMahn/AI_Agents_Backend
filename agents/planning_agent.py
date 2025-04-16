@@ -1,15 +1,16 @@
-import re
-
-from overrides import override
-
 from agent_objs.plan import Plan
 from agents import Agent
 
 
 class PlanningAgent(Agent):
     def __init__(self, name="Planning Agent",
-                 role="You are a planning agent that generates a plan with a flexible number of steps and then executes each step."):
-        super().__init__(name, role)
+                 role="You are a planning agent that generates a plan with a flexible number of steps and then executes each step.\n"
+                      "You are given tasks by the User and converse with him in a chat. \n"
+                      "Your handle in the chat is `Planning Agent`. "
+                      "The User can only see information in the `<response>` section of the chat (explained below..)\n",
+                 chroma_collection = "python"
+                 ):
+        super().__init__(name, role, chroma_collection)
 
         self.plan = Plan(self)
 
@@ -39,14 +40,15 @@ class PlanningAgent(Agent):
                 "If any step is unclear or you require further clarification, note these uncertainties during execution and adjust your plan as needed before proceeding.\n\n")
         )
 
-    @override
-    def handle_message(self, sender):
-        if self.replying:
-            pass
-        elif sender != self.name and sender != "System":
-            self.replying = True
-            self.prompt_agent(
-                f"The User has sent a message: {self.clean_chat.get_last_message_of_sender('User')}\n\n"
+    def prompt_agent(self):
+        self.replying = True
+        self._prompt = self.clean_chat.get_last_messages_of_sender('User')
+
+        i = 1
+        while "plan" not in [command.tag for command in self.commands]:
+            print(f"Developing Plan ({i})")
+            instructions = (
+                f"# **Instructions**\n"
                 f"Your task is to create a detailed, step-by-step plan to address the user's request. "
                 f"Generate this plan using the `<plan>` XML structure as defined in your instructions.\n\n"
                 f"When creating your plan, please consider the typical workflow for Data Science and exploratory coding tasks, breaking the problem down logically:\n"
@@ -63,26 +65,29 @@ class PlanningAgent(Agent):
                 f"Remember:\n"
                 f"* Be specific in each step.\n"
                 f"* Anticipate potential iterations – findings in one step might require revisiting an earlier one (e.g., EDA reveals data issues needing more cleaning).\n"
-                f"* Think about the tools (`<query>`, `<document>`, `<code>`) you'll likely need for each step.\n\n"
-                f"Please provide *only* the `<plan>...</plan>` structure as your response now. You will execute each step later using `<next_step />`."
+                f"* Think about the tools (`<query>`, `<document>`, `<code>`) you'll likely need for each step.\n"
+                f"* You can also do some research on the topic an to the plan in a later iteration\n"
             )
-            while self.clean_chat.get_last_sender() != self.name:
-                self.prompt_agent("It seems like the previous agent forgot to reply the User after finishing the query. "
-                                  "Please explain to the User what you have done.")
-        self.replying = False
 
-    @override
-    def prompt_agent(self, prompt):
-        super().prompt_agent(prompt)
+            entire_prompt = \
+                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+            self.prompt(entire_prompt)
+            i += 1
 
-        if len(self.plan) > 0:
-            step = self.plan[0]
-            execution_prompt = (
+        while not self.plan.is_done():
+            print(f"Executing prompt {i}")
+            step = self.plan.get_current_step()
+            message = f"Working on step: {step} ({self.plan.get_current_step_index()}/{len(self.plan)})"
+            self.clean_chat.add_message(message, sender="System")
+            self.chat.add_message(message, sender="System")
+            self.complete_chat.add_message(message, sender="System")
+
+            self._prompt = (
                 f"You are executing your plan step-by-step.\n\n"
                 f"Your current step is:\n"
-                f"---\n"
                 f"{step}\n"  # The actual text of the step
-                f"---\n\n"
+            )
+            instructions = (
                 f"Please focus on completing *only this step* now.\n"
                 f"After performing the action(s) for this step:\n"
                 f"1.  **If this step is complete AND you DID NOT use a command that requires waiting** (like `<document>`, or `<code>` which return results later), you MUST include the `<next_step />` command at the end of your response to signal readiness for the next step.\n"
@@ -90,5 +95,18 @@ class PlanningAgent(Agent):
                 f"3.  **If this is the FINAL step** of your plan (e.g., summarizing results, formulating the final answer), then instead of `<next_step />`, generate the complete `<response>` for the user.\n\n"
                 f"Proceed with executing the current step."
             )
-            self.prompt_agent(execution_prompt)
+            entire_prompt = \
+                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+            self.prompt(entire_prompt)
+            i += 1
+
+        while self.clean_chat.get_last_sender() != self.name:
+            instructions = (
+                "It seems like you forgot to reply to the User after finishing the query in the previous message. "
+                "Please explain to the User what you have done.")
+            entire_prompt = \
+                f"{self.plan}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+            self.prompt(entire_prompt)
+            i += 1
+        self.replying = False
         pass

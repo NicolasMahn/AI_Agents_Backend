@@ -1,11 +1,13 @@
-import ast, re
-import shutil
+import ast
+import socket
 from datetime import datetime
 import docker, tempfile, os
 
+
+from agent_objs.dash_app_evaluation import evaluate_dash_app
 from config import DEBUG
-from util import save_pickle, save_file, load_pickle
-from util.colors import WHITE, RESET, LIGHT_GREEN
+from util import save_file
+from util.colors import WHITE, RESET, LIGHT_GREEN, PINK
 
 DEFAULT_REQUIREMENTS = {
     "pandas",
@@ -15,27 +17,47 @@ DEFAULT_REQUIREMENTS = {
     "plotly",
     "dash",
     "scikit-learn",
-    "datetime"
+    "datetime",
+    "dash-bootstrap-components",
+    "dash-extensions"
 }
 MEM_LIMIT = "1025m"
-TIMEOUT = 100
+TIMEOUT = 50
 CPU_QUOTA = 100000
 
+def find_available_port(host='localhost'):
+    """
+    Finds and reserves an available port by binding to port 0.
+    Returns the port number assigned by the OS.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Binding to port 0 tells the OS to pick an available ephemeral port.
+        # Binding to host '' or '0.0.0.0' checks availability on all interfaces,
+        # while 'localhost' checks only for loopback. Choose based on need.
+        s.bind((host, 0))
+        s.listen(1) # Optional: Put socket into listening state
+        # getsockname() returns the (host, port) tuple the socket is bound to.
+        port = s.getsockname()[1]
+        # The 'with' statement ensures the socket is closed, releasing the port
+        # *unless* you plan to use this exact socket object.
+        # If you need the port number for a *different* process/socket,
+        # this still has a small race window, but it's much smaller and often
+        # acceptable compared to the check-then-bind approach.
+        # The *best* approach is to use the *same socket* that bound to port 0.
+    return port
 
 
 class Code:
-    def __init__(self, code: str, output_vars: list, requirements,
-                 code_imports: list, previous_outputs: list, input_files, output_files, agent,
+    def __init__(self, code: str, requirements, code_imports: list, agent,
                  version: str = "-", tag: str = "", frontend=False):
 
         self.code = code
-        if isinstance(output_vars, str):
-            output_vars = ast.literal_eval(output_vars)
-        self.output_vars = {var: None for var in output_vars} if output_vars else {}
-        self.get_last_line_outputs()
         self.requirements :list = []
         if isinstance(requirements, str):
-            requirements = ast.literal_eval(requirements)
+            try:
+                requirements = ast.literal_eval(requirements)
+            except Exception:
+                requirements = [requirements]
         if isinstance(requirements, list):
             for requirement in requirements:
                 if requirement not in DEFAULT_REQUIREMENTS:
@@ -45,13 +67,14 @@ class Code:
         self.dt = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
         self.agent = agent
         self.logs = None
+        self.frontend_html = None
 
         if isinstance(code_imports, str):
-            code_imports = ast.literal_eval(code_imports)
+            try:
+                code_imports = ast.literal_eval(code_imports)
+            except Exception:
+                code_imports = [code_imports]
         self.code_imports = code_imports
-        if isinstance(previous_outputs, str):
-            previous_outputs = ast.literal_eval(previous_outputs)
-        self.previous_outputs = previous_outputs
 
         self.frontend = frontend
 
@@ -62,40 +85,15 @@ class Code:
 
         self.code_dir = f"{self.agent.agent_dir}/code"
         self.code_file_path = f"{self.code_dir}/{self.name}.py"
-        self.output_file_path = f"{self.code_dir}/{self.name}.pkl"
 
-        self.input_files :list = []
-        self.relative_input_files :list = []
-        self.container_input_files :list = []
-        self.output_files :list = []
-        if isinstance(input_files, str):
-            input_files = ast.literal_eval(input_files)
-        if input_files:
-            for file in input_files:
-                self.input_files.append(os.path.join(self.agent.agent_dir, file))
-                self.relative_input_files.append(file)
-                self.container_input_files.append(f"/files/{file}")
-        if isinstance(output_files, str):
-            output_files = ast.literal_eval(output_files)
-        if output_files:
-            for file in output_files:
-                self.output_files.append(f"/files/{file}")
-        self.output_dir = f"{self.code_dir}/{self.name}_output_files"
+        self.input_dir = os.path.join(self.agent.agent_dir, "uploads")
+        os.makedirs(self.input_dir, exist_ok=True)
 
+        self.output_dir = os.path.join(self.agent.agent_dir, "output")
         os.makedirs(self.output_dir, exist_ok=True)
 
+        self.dash_evaluation = None
         self.relative_code_file_path = f"code/{self.name}.py"
-        self.relative_output_file_path = f"code/{self.name}.pkl"
-
-    def get_last_line_outputs(self):
-        lines = [line for line in self.code.split("\n") if line.strip()]
-        try:
-            last_line = lines[-1].strip()
-            if last_line and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*(,\s*[a-zA-Z_][a-zA-Z0-9_]*)*$', last_line):
-                vars_ = last_line.split(",")
-                self.output_vars = {var: None for var in vars_}
-        except IndexError:
-            pass
 
     def get_display_code(self):
         display_code = ""
@@ -106,15 +104,6 @@ class Code:
         if self.code_imports:
             display_code += f"# Code to be run previously: {self.code_imports}\n"
 
-        if self.previous_outputs:
-            display_code += f"# Previous Outputs: {self.previous_outputs}\n"
-
-        if self.input_files:
-            display_code += f"# Input files: {self.input_files}\n"
-
-        if self.output_files:
-            display_code += f"# Output files: {self.output_files}\n"
-
         display_code += "\n\n"
         display_code += self.code
         return display_code
@@ -123,146 +112,141 @@ class Code:
         save_file(self.code_file_path, self.get_display_code())
         pass
 
-    def get_execution_code(self):
-        code_and_front_injection = self.get_minimal_execution_code("import pickle \n"
-                                                                   "import os\n"
-                                                                   "os.makedirs('/files', exist_ok=True)\n")
-
-        if self.output_vars.keys():
-            injection_code_end = """\n\n
-def save_output(data, filename="/code/output.pkl"):
-    with open(filename, "wb") as f:
-        pickle.dump(data, f)
-"""
-            injection_code_end += """
-output = {"""
-            for var in self.output_vars.keys():
-                injection_code_end += f"""
-    "{var}": {var},"""
-            injection_code_end += """
-}
-save_output(output)"""
-        else:
-            injection_code_end = ""
-
-        return code_and_front_injection + injection_code_end
-
-    def get_minimal_execution_code(self, injection_code_front=""):
-
-        if self.previous_outputs:
-            for code_obj in self.previous_outputs:
-                output_dir = code_obj.relative_output_file_path
-                if os.path.exists(output_dir):
-                    injection_code_front += f"""
-try:
-    _output_vars = pickle.load(open("{output_dir}", "rb"))
-    for key, value in _output_vars.items():
-        globals()[key] = value
-except Exception as e:
-    print("Error loading previous output_vars:", e)
-"""
-
+    def get_execution_code(self, injection_code_front=""):
         if self.code_imports:
             for code_obj in self.code_imports:
-                execution_code = code_obj.get_minimal_execution_code()
+                execution_code = code_obj.get_execution_code()
                 injection_code_front += execution_code
 
         # Prepend the injection code to the user-provided code.
         return injection_code_front + "\n" + self.code + "\n"
 
-    def execute_code(self):
+    def get_main_code(self, port):
+        return f"""
+from agent_code import app
+import os
+
+if __name__ == '__main__':
+    print("Files available for use: ", os.listdir('uploads/'))
+    app.run(debug=True, host='0.0.0.0', port={port})                       
+        """
+
+    def execute(self):
         self.save_code()
 
         try:
-
-            execution_code = self.get_execution_code()
-
-            if DEBUG:
-                if self.frontend:
-                    print(f"{WHITE}Running Frontend Code: \n{LIGHT_GREEN}{execution_code}{RESET}")
-                else:
-                    print(f"{WHITE}Running Code: \n{LIGHT_GREEN}{execution_code}{RESET}")
+            execution_code = self.get_execution_code("import pickle \n"
+                                                     "import os\n"
+                                                     "os.makedirs('output', exist_ok=True)\n")
 
             # Create a temporary directory for the wrapped code file.
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Save the combined code into the temporary directory.
-                code_path = os.path.join(temp_dir, "user_code.py")
+                code_path = os.path.join(temp_dir, "agent_code.py")
                 with open(code_path, "w") as f:
                     f.write(execution_code)
+                start_command = "python /code/agent_code.py"
+
+                volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
+                           self.input_dir: {"bind": "/code/uploads/", "mode": "rw"},
+                           self.output_dir: {"bind": "/code/output/", "mode": "rw"}}
+                print(f"Volumes: {volumes}")
+
+                if DEBUG:
+                    for file in os.listdir(self.input_dir):
+                        print(f"{PINK}File in input dir: {file}{RESET}")
+
+                if self.frontend:
+                    start_command = f"python /code/main.py"
 
                 # Process any extra requirements.
                 if self.requirements:
                     req_str = " ".join(self.requirements)
                     # Enable network access to allow pip to install missing packages.
-                    command = f"sh -c 'pip install {req_str} && python /code/user_code.py'"
+                    command = f"sh -c 'pip install {req_str} && {start_command}'"
                 else:
                     # Nothing extra to install.
-                    command = "python /code/user_code.py"
-
-                volumes = {
-                    code_path: {"bind": "/code/user_code.py", "mode": "rw"},
-                    **{os.path.abspath(self.input_files[i]): {"bind": f"{self.container_input_files[i]}", "mode": "rw"}
-                       for i in range(len(self.input_files))},
-                    **{code_obj.output_file_path: {"bind": f"{code_obj.output_file_path}", "mode": "rw"}
-                       for code_obj in self.previous_outputs},
-                }
-                print(self.input_files)
-                print(f"{WHITE}Volumes: {LIGHT_GREEN}{volumes}{RESET}")
+                    command = start_command
 
                 # Set up and run the Docker container with security restrictions.
                 client = docker.from_env()
-                container = client.containers.run(
-                    "custom-python",  # Ensure this image is built from your CustomPythonDockerfile.
-                    command=command,
-                    volumes=volumes,
-                    network_disabled=False,
-                    mem_limit=MEM_LIMIT,  # Limit memory usage.
-                    cpu_quota=CPU_QUOTA,  # Limit CPU time.
-                    detach=True,
-                    remove=False  # Auto-remove the container after execution.
-                )
-                container.wait(timeout=TIMEOUT)
-                logs = container.logs().decode()
-                output_path = os.path.join(temp_dir, "output.pkl")
-                if os.path.exists(output_path):
-                    output_data = load_pickle(output_path)
+
+                if self.frontend:
+                    port = find_available_port()
+                    main_path = os.path.join(temp_dir, "main.py")
+                    with open(main_path, "w") as f:
+                        f.write(self.get_main_code(port))
+                    volumes[main_path] = {"bind": "/code/main.py", "mode": "rw"}
+
+                    container = client.containers.run(
+                        "custom-python",  # Ensure this image is built from your CustomPythonDockerfile.
+                        command=command,
+                        volumes=volumes,
+                        network_disabled=False,
+                        mem_limit=MEM_LIMIT,  # Limit memory usage.
+                        cpu_quota=CPU_QUOTA,  # Limit CPU time.
+                        detach=True,
+                        remove=False,
+                        ports={port: port}
+                    )
+                    self.dash_evaluation = evaluate_dash_app(port, self.code_dir)
+                    print("container ID: ", container.id)
+                    # container.wait(timeout=TIMEOUT*100)
                 else:
-                    output_data = dict()
-
-                for output_file in self.output_files:
-                    output_path = os.path.join(temp_dir, output_file)
-                    if os.path.exists(output_path):
-                        shutil.move(output_path, self.output_dir)
-
-                container.remove()
-
-                if DEBUG:
-                    print(f"{WHITE}Logs: {LIGHT_GREEN}{logs}{RESET}")
-                    print(f"{WHITE}Output: {LIGHT_GREEN}{output_data}{RESET}")
-
-                save_pickle(self.output_file_path, output_data)
+                    container = client.containers.run(
+                        "custom-python",  # Ensure this image is built from your CustomPythonDockerfile.
+                        command=command,
+                        volumes=volumes,
+                        network_disabled=False,
+                        mem_limit=MEM_LIMIT,  # Limit memory usage.
+                        cpu_quota=CPU_QUOTA,  # Limit CPU time.
+                        detach=True,
+                        remove=False  # Auto-remove the container after execution.
+                    )
+                    container.wait(timeout=TIMEOUT)
+                logs = container.logs().decode()
+                print(logs)
 
                 self.logs = logs
-                self.output_vars = output_data
+
         except Exception as e:
             print(f"Error executing code: {e}")
             self.logs = str(e)
-            self.output_vars = {}
+        finally:
+            # Ensure the container is stopped and removed.
+            if container:
+                try:
+                    container.stop()
+                except Exception as stop_error:
+                    print(f"Error stopping container: {stop_error}")
+                try:
+                    container.remove()
+                except Exception as remove_error:
+                    print(f"Error removing container: {remove_error}")
 
     def get_results_xml(self):
-        return (f"<logs>\n"
-            f"  {self.logs}"
-            f"</logs>\n\n  "
-            f'<output saved="{self.relative_output_file_path}" >\n'
-            f"  {self.output_vars}"
-            f"</output>\n\n  "
-            f'<code saved="{self.relative_code_file_path}" />\n')
+        results = (
+            f"Here are the results from the code execution:\n"
+            f"Logs:\n"
+            f"{self.logs}\n\n")
+        if self.frontend:
+            results += (
+                f"The Frontend was evaluated with these results:\n"
+                f"{self.dash_evaluation}\n")
+        results += (
+            f"Executed Code:\n"
+            f"{self.get_display_code()}\n")
+        print(results)
+        return results
 
     def get_code_for_api(self):
-        jsonable_class = [self.code, self.output_vars, list(self.requirements),
-                [code_obj.get_name() for code_obj in self.code_imports],
-                [code_obj.relative_output_file_path for code_obj in self.previous_outputs],
-                self.relative_input_files, self.output_files, self.frontend]
+        input_files = []
+        for file in os.listdir(self.input_dir):
+            input_files.append(os.path.join(self.input_dir, file))
+
+        jsonable_class = [self.code, list(self.requirements),
+                          [code_obj.get_name() for code_obj in self.code_imports],
+                          input_files, self.frontend]
         return jsonable_class
 
 

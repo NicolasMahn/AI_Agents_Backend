@@ -19,9 +19,8 @@ def get_agents():
 @app.route('/<url_agent_name>/reset_agent', methods=['DELETE'])
 def reset_agent(url_agent_name):
     agent_name = decode_url_str(url_agent_name)
-    agent = agent_manager.get_agent(agent_name)
-    if agent:
-        agent.reset()
+    success = agent_manager.agent_reset(agent_name)
+    if success:
         return jsonify({'message': f'`{agent_name}` was reset successfully'})
     else:
         return jsonify({'message': f'`{agent_name}` not found'}), 404
@@ -33,7 +32,11 @@ def upload_file(url_agent_name):
     upload_contents = request.get_json()
     filename = upload_contents['filename']
     agent.upload_file(upload_contents['contents'], filename)
-    return jsonify({'message': 'File uploaded'})
+
+    if filename in os.listdir(os.path.join(agent.agent_dir, 'uploads')):
+        return jsonify({'message': 'File uploaded'})
+    else:
+        return jsonify({'error': 'File upload failed'}), 500
 
 @app.route('/<url_agent_name>/add_message', methods=['PUT'])
 def add_message(url_agent_name):
@@ -44,7 +47,7 @@ def add_message(url_agent_name):
         agent_name = decode_url_str(url_agent_name)
         agent = agent_manager.get_agent(agent_name)
         if agent:
-            agent.add_message("User", data['text'])
+            threading.Thread(target=agent.add_message, args=('User', data['text'])).start()
         else:
             return jsonify({'error': f'Agent `{agent_name}` not found'}), 404
     except KeyError as e:
@@ -104,12 +107,6 @@ def get_code_names(url_agent_name):
     agent = agent_manager.get_agent(agent)
     return jsonify(agent.get_code_names())
 
-@app.route('/<url_agent_name>/does_agent_code', methods=['GET'])
-def does_agent_code(url_agent_name):
-    agent = decode_url_str(url_agent_name)
-    agent = agent_manager.get_agent(agent)
-    return jsonify(agent.does_agent_code())
-
 @app.route('/get_available_models', methods=['GET'])
 def get_available_models():
     return agent_manager.get_available_models()
@@ -123,18 +120,20 @@ def set_model(model):
         print(f'Model `{model}` not available')
         return jsonify({'error': f'Model `{model}` not available'}), 404
 
-@app.route('/<url_agent_name>/get_file/<path:filename>', methods=['GET'])
-def get_file(url_agent_name, filename):
-    agent_name = decode_url_str(url_agent_name)
-    agent = agent_manager.get_agent(agent_name)
-    if agent:
-        file_path = os.path.join(agent.agent_dir, filename)
+@app.route('/get_model', methods=['GET'])
+def get_model():
+    return jsonify(agent_manager.get_model())
+
+@app.route('/get_file/<path:file_path>', methods=['GET'])
+def get_file(file_path):
+    try:
         if os.path.exists(file_path):
             return send_file(file_path)
         else:
-            return jsonify({'error': f'File `{filename}` not found'}), 404
-    else:
-        return jsonify({'error': f'Agent `{agent_name}` not found'}), 404
+            return jsonify({'error': f'File `{file_path}` not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

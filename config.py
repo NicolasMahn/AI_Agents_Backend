@@ -25,10 +25,11 @@ MODEL_OWNER = {
                "gemini-2.5-pro-exp-03-25"]
 }
 
-max_context_tokens = max_tokens[selected_model] - 60000 # minus a safety margin for role and other tokens
-MAX_LENGTH_CONTEXT_ITEM = 700
+max_prompt_tokens = 10000
+max_context_tokens = max_tokens[selected_model] - 10000 - max_prompt_tokens # minus a safety margin for role and other tokens
+max_generic_content_length = 10000
+max_chat_tokens = 4 * max_generic_content_length
 
-MAX_SHORT_MEMORY_TOKENS = 700
-RAG_CHUNK_SIZE = 1000
+RAG_CHUNK_SIZE = 8192
 
 DEBUG = os.getenv("DEBUG", False)

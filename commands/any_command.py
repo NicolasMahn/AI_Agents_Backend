@@ -6,6 +6,9 @@ import xml.etree.ElementTree as ET
 def execute_commands(commands: list[ET], agent) -> dict[str: str]:
     responses = {}
     for command in commands:
+        if agent.no_consecutive_messages and command.tag in ["document", "query", "search", "code"]:
+            responses[command.tag] = "Commands that take execution time are no longer allowed. reply to the User!"
+            continue
         response = execute_command(command, agent)
         responses[command.tag] =  response
 

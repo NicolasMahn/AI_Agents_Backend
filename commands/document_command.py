@@ -11,7 +11,7 @@ from PIL import Image
 from pdfminer.high_level import extract_text
 from pdfminer.pdfparser import PDFSyntaxError
 
-from config import MAX_LENGTH_CONTEXT_ITEM
+from config import max_generic_content_length
 from llm_functions import count_context_length
 from llm_functions.llm_api_wrapper import get_image_description_gemini
 
@@ -68,10 +68,10 @@ def get_document_content(filepath: str) -> str:
         file_extension = extension.lower().lstrip('.') if extension else None
 
         report_parts.append(f"# Document Report: `{os.path.basename(filepath)}`")
-        report_parts.append(f"**Full Path:** `{full_file_path}`")
+        #report_parts.append(f"**Full Path:** `{full_file_path}`")
         report_parts.append(f"**Size:** {file_size} bytes")
         report_parts.append(f"**Detected Type:** {file_extension or 'Unknown'}")
-        report_parts.append("---") # Separator
+        #report_parts.append("---") # Separator
 
         # --- PDF Handling ---
         if file_extension == 'pdf':
@@ -81,7 +81,7 @@ def get_document_content(filepath: str) -> str:
                 # Note: This can be slow for very large PDFs.
                 # Consider adding a timeout or page limit if necessary.
                 extracted_text = extract_text(filepath)
-                text_preview = truncate_text_to_tokens(extracted_text, MAX_LENGTH_CONTEXT_ITEM - 50)  # Leave margin for headers
+                text_preview = truncate_text_to_tokens(extracted_text, max_generic_content_length - 50)  # Leave margin for headers
 
                 # Simple page count attempt (can be inaccurate or fail for complex PDFs)
                 # A more robust page count might require PyPDF2 or another library
@@ -121,7 +121,7 @@ def get_document_content(filepath: str) -> str:
                                 line_count += 1
                                 # Check token count before adding more text
                                 potential_text = content_preview + line
-                                if count_context_length(potential_text) < (MAX_LENGTH_CONTEXT_ITEM - 100):  # Leave margin
+                                if count_context_length(potential_text) < (max_generic_content_length - 100):  # Leave margin
                                     content_preview = potential_text
                                 else:
                                     content_preview += "\n[... Reached token limit during preview generation ...]"
@@ -141,7 +141,7 @@ def get_document_content(filepath: str) -> str:
                     report_parts.append(f"**Line Count:** {line_count}")
                     report_parts.append("### Initial Content Preview:")
                     # Final trim just in case
-                    final_preview = truncate_text_to_tokens(content_preview, MAX_LENGTH_CONTEXT_ITEM - count_context_length(
+                    final_preview = truncate_text_to_tokens(content_preview, max_generic_content_length - count_context_length(
                         "\n".join(report_parts)) - 20)
                     report_parts.append(f"```\n{final_preview}\n```")
 
@@ -175,9 +175,9 @@ def get_document_content(filepath: str) -> str:
                 temp_report = "\n".join(report_parts) + "\n" + schema_report
                 schema_tokens = count_context_length(temp_report)
 
-                if schema_tokens < MAX_LENGTH_CONTEXT_ITEM:
+                if schema_tokens < max_generic_content_length:
                     report_parts.append(schema_report)
-                    remaining_tokens = MAX_LENGTH_CONTEXT_ITEM - schema_tokens
+                    remaining_tokens = max_generic_content_length - schema_tokens
                     if count_context_length(head_report) < remaining_tokens:
                         report_parts.append(head_report)
                     else:
@@ -264,7 +264,7 @@ def get_document_content(filepath: str) -> str:
                 # Calculate remaining token budget for the description
                 current_report_tokens = count_context_length("\n".join(report_parts))
                 description_token_budget = max(100,
-                                               MAX_LENGTH_CONTEXT_ITEM - current_report_tokens - 50)  # Ensure positive budget, leave margin
+                                               max_generic_content_length - current_report_tokens - 50)  # Ensure positive budget, leave margin
 
                 report_parts.append("### AI Generated Description:")
                 # Call the new vision function
@@ -311,12 +311,12 @@ def get_document_content(filepath: str) -> str:
     final_report = "\n".join(report_parts)
 
     # Check final token count and truncate if necessary (though individual sections tried to stay within limits)
-    if count_context_length(final_report) > MAX_LENGTH_CONTEXT_ITEM:
+    if count_context_length(final_report) > max_generic_content_length:
         # If the report is still too long, aggressively truncate the largest text block (usually content preview)
         # This is a fallback; ideally, the section-specific logic prevents this.
         # For simplicity here, we'll just truncate the whole report string.
         # A better strategy would identify the preview sections and shorten them first.
-        final_report = truncate_text_to_tokens(final_report, MAX_LENGTH_CONTEXT_ITEM)
+        final_report = truncate_text_to_tokens(final_report, max_generic_content_length)
         # Ensure a note about truncation is present if not added by truncate_text_to_tokens
         if "[... Content truncated" not in final_report:
             final_report += "\n\n[... Report truncated to fit token limit ...]"
