@@ -45,7 +45,7 @@ class Agent:
         self.commands :list = []
         self.extraction_failure = False
         self._prompt :str = ""
-        self._tmp_context_data :str = ""
+        self._tmp_context_data_str :str = ""
         self.replying :bool = False # indicates if the agent is currently replying to a user
 
         self.max_iterations = 10
@@ -61,32 +61,28 @@ class Agent:
 
     def get_default_context_data(self):
         return {
-            {
-                "name": "History",
+            "History": {
                 "value": self.chat,
                 "description": "Previous outputs tool actions and conversations.",
                 "last_interaction": 0,
                 "importance": 1,
                 "always_display": True,
             },
-            {
-                "name": "Short Memory",
+            "Short Memory": {
                 "value": self.get_xml_short_memory,
                 "description": "Stores temporary information.",
                 "last_interaction": 0,
                 "importance": 3,
                 "always_display": False
             },
-            {
-                "name": "Long-Term Memory",
+            "Long-Term Memory": {
                 "value": self.get_xml_long_memory,
                 "description": "Stores persistent knowledge.",
                 "last_interaction": 0,
                 "importance": 3,
                 "always_display": False,
             },
-            {
-                "name": "Context Dump",
+            "Context Dump": {
                 "value": "HARDCODED",
                 "description": "Gives the agent additional context about the current task.",
                 "last_interaction": 0,
@@ -96,22 +92,17 @@ class Agent:
         }
 
     def update_last_use_context(self, name):
-        for context_item in self.context_data:
-            if context_item["name"] == name:
-                context_item["last_interaction"] = 0
-                break
+        self.context_data[name]["last_interaction"] = 0
 
     def add_context_data(self, name, value, description="No description available", importance = 5, always_display = False):
-        self.context_data = [context_item for context_item in self.context_data if name != context_item["name"]]
 
-        self.context_data.append({
-            "name": name,
+        self.context_data[name] = {
             "value": value,
             "description": description,
             "last_interaction": 0,
             "importance": importance,
             "always_display": always_display
-        })
+        }
 
     def use_tool(self, llm_response):
         self.commands, extraction_failures = command_util.find_commands_in_string(llm_response)
@@ -173,22 +164,21 @@ class Agent:
         pass
 
     def generate_context_data(self, status_info = False):
-        context_data = f""
+        context_data_str = f""
 
         always_display_count = 0
-        for context_item in self.context_data:
+        for name, context_item in self.context_data.items():
             if context_item["always_display"]:
                 always_display_count += 1
 
 
-        self.context_data = sorted(
-            self.context_data,
-            key=lambda x: 1 / (1 + np.exp( -0.01 * ( x["last_interaction"]**2 + x["importance"]**2 +
-                                                     (np.maximum(0, x["importance"] - 8.5))**4 ) ))
-        )
+        self.context_data = dict(sorted(
+            self.context_data.items(),
+            key=lambda x: 1 / (1 + np.exp( -0.01 * ( x[1]["last_interaction"]**2 + x[1]["importance"]**2 +
+                                                     (np.maximum(0, x[1]["importance"] - 8.5))**4 ) ))
+        ))
 
-        for i, context_item in enumerate(self.context_data):
-            name = context_item["name"]
+        for i, (name, context_item) in enumerate(self.context_data.items()):
             print(f"{ORANGE} Current context item: {name} ({i + 1}/{len(self.context_data)}) {RESET}")
             value = context_item["value"]
             if callable(value):
@@ -197,7 +187,7 @@ class Agent:
 
             if name == "Context Dump" and not status_info:
                 context_item_str = f"# **{name}**:\n"
-                remaining_context = config.max_context_tokens - count_context_length(context_data)
+                remaining_context = config.max_context_tokens - count_context_length(context_data_str)
                 context_item_str += f"{self.get_context_dump(remaining_context)}\n---\n"
             elif name == "Context Dump" and status_info:
                 continue
@@ -213,18 +203,18 @@ class Agent:
 
 
             if context_item["always_display"]:
-                context_data += context_item_str
+                context_data_str += context_item_str
                 always_display_count -= 1
-            elif (count_context_length(context_data) +
+            elif (count_context_length(context_data_str) +
                   count_context_length(context_item_str) +
                   (config.max_generic_content_length * always_display_count)) < config.max_context_tokens:
-                context_data += context_item_str
-                self._tmp_context_data += context_data
+                context_data_str += context_item_str
+                self._tmp_context_data_str += context_data_str
 
             if not status_info:
                 context_item["last_interaction"] += 1
 
-        return context_data
+        return context_data_str
 
     def get_xml_short_memory(self):
         short_memory = self.get_short_memory()
@@ -245,7 +235,7 @@ class Agent:
         context_xml_str += "The context is sorted by relevance. Reference the context source you used in the user response.\n"
 
         n_results = int(config.max_context_tokens / config.RAG_CHUNK_SIZE * 10)
-        context_dict = query_rag(f"{self._prompt}\n---\n{self._tmp_context_data}", self.chroma_collection,
+        context_dict = query_rag(f"{self._prompt}\n---\n{self._tmp_context_data_str}", self.chroma_collection,
                                  n_results)
         context_xml_str += self.convert_query_results_to_xml_schema(context_dict, max_length=max_length, root_name="context")
 
@@ -283,7 +273,7 @@ class Agent:
         return util.load_text(f"{self.agent_dir}/{self.name}_memory")
 
     def get_long_memory(self):
-        return rag.query_rag(f"{self._prompt}\n---\n{self._tmp_context_data}",
+        return rag.query_rag(f"{self._prompt}\n---\n{self._tmp_context_data_str}",
                              self.long_term_memory_collection, n_results=1)
 
     def add_custom_command_instructions(self, name, instructions, active = True):
