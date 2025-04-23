@@ -22,8 +22,7 @@ RUN apk add --no-cache \
     libgbm \
     libasound2 \
     pango \
-    gtk+3.0 \
-    wget
+    gtk+3.0
 
 # Install Playwright and its browsers
 RUN pip install --no-cache-dir playwright && playwright install
