@@ -1,0 +1,47 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Set up Docker Build
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_EMAIL }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      run: |
+        docker build --build-arg CHROMA_HOST=${{ secrets.CHROMA_HOST }} \
+                     --build-arg CHROMA_PORT=${{ secrets.CHROMA_PORT }} \
+                     --build-arg GOOGLE_KEY=${{ secrets.GOOGLE_KEY }} \
+                     --build-arg OPENAI_KEY=${{ secrets.OPENAI_KEY }} \
+                     --build-arg LAMBDA_KEY=${{ secrets.LAMBDA_KEY }} \
+                     --build-arg HUGGING_FACE_KEY=${{ secrets.HUGGING_FACE_KEY }} \
+                     -t ${{ secrets.DOCKER_USERNAME }}/agent_backend:latest .
+        docker push ${{ secrets.DOCKER_USERNAME }}/agent_backend:latest

@@ -1,11 +1,13 @@
 import argparse
 import os
 
+import httpx
+
 from config import DEBUG, max_tokens
 from scrt import CHROMADB_HOST, CHROMADB_PORT
 import chromadb
 
-from util.colors import ORANGE, RESET, WHITE
+from util.colors import ORANGE, RESET, WHITE, PINK
 from .embedding_function import openai_ef
 
 from llm_functions import llm_api_wrapper, count_context_length
@@ -54,6 +56,8 @@ def query_rag_with_llm_response(query_text: str, chroma_collection: str, unique_
                                 unique_prompt_template: str=None, n_results: int = 20):
 
     results = query_rag(query_text, chroma_collection, n_results=n_results)
+    if isinstance(results, str):
+        return results, None, None
 
     ids = results['ids'][0]
     page_contents = results['documents'][0]
@@ -84,21 +88,41 @@ def query_rag_with_llm_response(query_text: str, chroma_collection: str, unique_
 
     return response_text, context_text, metadatas
 
-def query_rag(query_text: str, chroma_collection: str, n_results: int = 3):
-    # Prepare the DB.
-    chroma_client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+def query_rag(query_text: str, chroma_collection: str, n_results: int = 3, _retry=0):
+    try:
+        # Prepare the DB.
+        chroma_client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
 
-    # Create or get the test collection
-    collection = chroma_client.get_or_create_collection(name=chroma_collection, embedding_function=openai_ef)
+        # Create or get the test collection
+        collection = chroma_client.get_or_create_collection(name=chroma_collection, embedding_function=openai_ef)
 
-    query_text = remove_excess_query_length(query_text)
+        query_text = remove_excess_query_length(query_text)
 
-    # Search the DB.
-    results = collection.query(
-        query_texts=[query_text],  # Chroma will embed this for you
-        n_results=n_results  # how many results to return
-    )
-    return results
+        collection_size = collection.count()
+        if collection_size == 0:
+            print(f"{WHITE}🔍  WARNING: The collection is empty. Please add documents before querying.{RESET}")
+            return []
+
+        elif n_results > collection.count():
+            results = collection.get(limit=n_results)
+            return results
+
+        # Search the DB.
+        results = collection.query(
+            query_texts=[query_text],  # Chroma will embed this for you
+            n_results=n_results  # how many results to return
+        )
+        return results
+    except httpx.ReadError as e:
+        if _retry < 3:
+            print(f"{PINK}🔍  Retrying query due to ReadError: {e}{RESET}")
+            return query_rag(query_text, chroma_collection, n_results, _retry + 1)
+        else:
+            print(f"{PINK}🔍  Failed to query after 3 retries: {e}{RESET}")
+            return f"Failed to query after 3 retries: {e}"
+    except Exception as e:
+        print(f"{PINK}🔍  An error occurred: {e}{RESET}")
+        return "Error: " + str(e)
 
 def remove_excess_query_length(query_text):
     embedding_model = "text-embedding-ada-002"

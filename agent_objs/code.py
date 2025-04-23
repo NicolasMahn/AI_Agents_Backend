@@ -150,7 +150,6 @@ if __name__ == '__main__':
                 volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
                            self.input_dir: {"bind": "/code/uploads/", "mode": "rw"},
                            self.output_dir: {"bind": "/code/output/", "mode": "rw"}}
-                print(f"Volumes: {volumes}")
 
                 if DEBUG:
                     for file in os.listdir(self.input_dir):
@@ -214,15 +213,20 @@ if __name__ == '__main__':
             self.logs = str(e)
         finally:
             # Ensure the container is stopped and removed.
-            if container:
-                try:
-                    container.stop()
-                except Exception as stop_error:
-                    print(f"Error stopping container: {stop_error}")
-                try:
-                    container.remove()
-                except Exception as remove_error:
-                    print(f"Error removing container: {remove_error}")
+            try:
+                if container:
+                    try:
+                        container.stop()
+                    except Exception as stop_error:
+                        print(f"Error stopping container: {stop_error}")
+                    try:
+                        container.remove()
+                    except Exception as remove_error:
+                        print(f"Error removing container: {remove_error}")
+            except UnboundLocalError:
+                print("Container was never created.")
+            except Exception as e:
+                print(f"Error cleaning up container: {e}")
 
     def get_results_xml(self):
         results = (

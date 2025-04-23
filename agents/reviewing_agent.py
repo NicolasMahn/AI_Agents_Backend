@@ -30,7 +30,7 @@ class ReviewingAgent(Agent):
 
             self.command_instructions["response"]["active"] = False #Forbidde the use of the response command
             entire_prompt = \
-                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+                f"{self._prompt}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
             self.prompt(entire_prompt)
 
             if not self.extraction_failure:
@@ -88,7 +88,7 @@ class ReviewingAgent(Agent):
             )
 
             entire_prompt = \
-                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+                f"{self._prompt}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
 
             self.prompt(entire_prompt)
             i += 1

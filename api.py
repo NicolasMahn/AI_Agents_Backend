@@ -135,5 +135,33 @@ def get_file(file_path):
         return jsonify({'error': str(e)}), 500
 
 
+# --- api calls intended specifically for DataSciBench
+
+@app.route('/<url_agent_name>/prompt_for_datascibench/', methods=['POST'])
+def prompt_for_datascibench(url_agent_name):
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+        return jsonify({'error': 'Invalid input'}), 400
+    try:
+        agent_name = decode_url_str(url_agent_name)
+        agent = agent_manager.get_agent(agent_name)
+        if agent:
+            agent.add_message(data['sender'], data['text'])
+            while agent.replying:
+                time.sleep(0.1)
+
+            if 0 == len(agent.get_code_names()):
+                return jsonify(agent.get_reply())
+
+            code_name = agent.get_code_names()[-1]
+            return jsonify(str(agent.get_reply()) + "\n---\n```python\n" + agent.get_code_script(code_name) + "\n```")
+
+
+        else:
+            return jsonify({'error': f'Agent `{agent_name}` not found'}), 404
+    except KeyError as e:
+        return jsonify({'error': f'Missing key: {e}'}), 400
+
+
 if __name__ == '__main__':
     app.run(debug=False)

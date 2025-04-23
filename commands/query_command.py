@@ -17,6 +17,9 @@ def execute_query_command(command: ET, agent) -> str:
 
     results = rag.query_rag(query, chroma_collection, n_results=5)
 
+    if isinstance(results, str):
+        return results
+
     xml_str = agent.convert_query_results_to_xml_schema(results, root_name=query_type)
 
     response_text = f"Query results for `{query}`:\n"

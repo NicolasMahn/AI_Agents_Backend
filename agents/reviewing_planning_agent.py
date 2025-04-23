@@ -73,11 +73,10 @@ class ReviewingPlanningAgent(Agent):
                 f"* Anticipate potential iterations – findings in one step might require revisiting an earlier one (e.g., EDA reveals data issues needing more cleaning).\n"
                 f"* Think about the tools (`<query>`, `<document>`, `<code>`) you'll likely need for each step.\n"
                 f"* You can also do some research on the topic an to the plan in a later iteration\n"
-                f"Please, also explain the plan to the User in a `<response>` tag ."
             )
 
             entire_prompt = \
-                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+                f"{self._prompt}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
             self.prompt(entire_prompt)
             i += 1
 
@@ -111,7 +110,7 @@ class ReviewingPlanningAgent(Agent):
         )
 
         entire_prompt = \
-            f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions_summarize_plan}"
+            f"{self._prompt}\n---\n{instructions_summarize_plan}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
         self.prompt(entire_prompt)
 
         self.command_instructions["response"]["active"] = False
@@ -122,10 +121,10 @@ class ReviewingPlanningAgent(Agent):
 
         while not self.plan.is_done():
             step = self.plan.get_current_step()
-            message = f"Working on step: {step} ({self.plan.get_current_step_index()}/{len(self.plan)})"
-            self.clean_chat.add_message(message, sender="System")
-            self.chat.add_message(message, sender="System")
-            self.complete_chat.add_message(message, sender="System")
+            message = f"Working on step: {step} ({self.plan.get_current_step_index()+1}/{len(self.plan)})"
+            self.clean_chat.add_message("System", message)
+            self.chat.add_message("System", message)
+            self.complete_chat.add_message("System", message)
 
             starting_i = i
             while (i - starting_i) < self.max_iterations:
@@ -143,7 +142,7 @@ class ReviewingPlanningAgent(Agent):
                     f"Perform the action(s) now."
                 )
                 entire_prompt = \
-                    f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions_do_step}"
+                    f"{self._prompt}\n---\n{instructions_do_step}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
                 self.prompt(entire_prompt)
                 i += 1
 
@@ -158,7 +157,7 @@ class ReviewingPlanningAgent(Agent):
                     )
 
                     entire_prompt = \
-                        f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions_validate_step}"
+                        f"{self._prompt}\n---\n{instructions_validate_step}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
                     if self.prompt(entire_prompt, yes_no_prompt=True):
                         self.plan.next_step()
                         break
@@ -185,7 +184,7 @@ class ReviewingPlanningAgent(Agent):
         )
 
         entire_prompt = \
-            f"{instructions_final_summary}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}"
+            f"{instructions_final_summary}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
         self.prompt(entire_prompt)
 
         self.command_instructions["code"]["active"] = True

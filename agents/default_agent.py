@@ -1,4 +1,5 @@
 import base64
+import itertools
 import os
 
 import numpy as np
@@ -13,7 +14,7 @@ from commands import execute_commands, execute_document_command
 from agent_objs.chat import Chat
 from rag import query_rag
 from util import delete_directory_with_content
-from util.colors import ORANGE, RESET
+from util.colors import ORANGE, RESET, RED, PINK
 
 
 class Agent:
@@ -65,27 +66,27 @@ class Agent:
                 "value": self.chat,
                 "description": "Previous outputs tool actions and conversations.",
                 "last_interaction": 0,
-                "importance": 1,
+                "importance": 0,
                 "always_display": True,
             },
-            "Short Memory": {
+            "Short-Tern Memory": {
                 "value": self.get_xml_short_memory,
                 "description": "Stores temporary information.",
                 "last_interaction": 0,
                 "importance": 3,
-                "always_display": False
+                "always_display": True
             },
             "Long-Term Memory": {
                 "value": self.get_xml_long_memory,
                 "description": "Stores persistent knowledge.",
                 "last_interaction": 0,
-                "importance": 3,
-                "always_display": False,
+                "importance": 9,
+                "always_display": True,
             },
             "Context Dump": {
                 "value": "HARDCODED",
                 "description": "Gives the agent additional context about the current task.",
-                "last_interaction": 0,
+                "last_interaction": 10,
                 "importance": 10,
                 "always_display": True,
             }
@@ -95,7 +96,6 @@ class Agent:
         self.context_data[name]["last_interaction"] = 0
 
     def add_context_data(self, name, value, description="No description available", importance = 5, always_display = False):
-
         self.context_data[name] = {
             "value": value,
             "description": description,
@@ -126,14 +126,14 @@ class Agent:
 
     def prompt_agent(self):
         self.replying = True
-        self._prompt = self.clean_chat.get_last_messages_of_sender('User')
+        self._prompt = "# User Prompt\n" + self.clean_chat.get_last_messages_of_sender('User') + "\n"
 
         i = 0
         while self.clean_chat.get_last_sender() != self.name and i < self.max_iterations:
             print(f"Executing prompt {i + 1}")
 
             entire_prompt = \
-                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}"
+                f"{self._prompt}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
             self.prompt(entire_prompt)
 
             i += 1
@@ -142,13 +142,18 @@ class Agent:
 
     def prompt(self, prompt, yes_no_prompt = False):
         self.complete_chat.add_message("Prompt", prompt)
-
-        response = basic_prompt(prompt, self.role)
+        try:
+            response = basic_prompt(prompt, self.role)
+        except Exception as e:
+            print(f"{RED}Error in prompt:{RESET} {e} ")
+            response = "Error when attempting to prompt the LLM. Please try again."
         self.chat.add_message(self.name, response)
+
+
         self.complete_chat.add_message(self.name, response)
 
         if yes_no_prompt:
-            if "<Yes>" in response:
+            if "<Yes>" in response or "<yes>" in response:
                 return True
             else:
                 return False
@@ -178,7 +183,7 @@ class Agent:
                                                      (np.maximum(0, x[1]["importance"] - 8.5))**4 ) ))
         ))
 
-        for i, (name, context_item) in enumerate(self.context_data.items()):
+        for i, (name, context_item) in enumerate(self.context_data.copy().items()):
             print(f"{ORANGE} Current context item: {name} ({i + 1}/{len(self.context_data)}) {RESET}")
             value = context_item["value"]
             if callable(value):
@@ -214,6 +219,10 @@ class Agent:
             if not status_info:
                 context_item["last_interaction"] += 1
 
+                if context_item["last_interaction"] > 10 and not context_item["always_display"]:
+                    self.context_data.pop(name)
+
+
         return context_data_str
 
     def get_xml_short_memory(self):
@@ -226,7 +235,11 @@ class Agent:
     def get_xml_long_memory(self):
         long_memory = self.get_long_memory()
         if long_memory is not None:
-            return self.convert_query_results_to_xml_schema(long_memory, root_name="long_memory")
+            try:
+                return self.convert_query_results_to_xml_schema(long_memory, root_name="long_memory")
+            except Exception as e:
+                print(f"{RED}Error in converting long memory to XML: {e}{RESET}")
+                return "<long_memory> </long_memory>"
         else:
             return "<long_memory> </long_memory>"
 
@@ -237,35 +250,125 @@ class Agent:
         n_results = int(config.max_context_tokens / config.RAG_CHUNK_SIZE * 10)
         context_dict = query_rag(f"{self._prompt}\n---\n{self._tmp_context_data_str}", self.chroma_collection,
                                  n_results)
-        context_xml_str += self.convert_query_results_to_xml_schema(context_dict, max_length=max_length, root_name="context")
-
+        if isinstance(context_dict, list) or isinstance(context_dict, dict):
+            context_xml_str += self.convert_query_results_to_xml_schema(context_dict, max_length=max_length,
+                                                                        root_name="context")
+        else:
+            print(f"{PINK}Error when attempting to query the context: {str(context_dict)[:100]}{RESET}")
+            self.chat.add_message("Error", f"Error when attempting to query the context: {context_dict}")
+            context_xml_str = ""
         return context_xml_str
 
+    def _build_xml_string(self, item_xml_strings, k, root_name):
+        """Helper function to build the XML string for the first k items."""
+        if k == 0:
+            # Handle edge case of zero items - return just root tags
+            return f"<{root_name}>\n</{root_name}>\n"
+
+        # Select the first k item strings
+        selected_items = item_xml_strings[:k]
+
+        # Join items with newlines and add root tags
+        # Note: Ensure each item string already ends with a newline if desired,
+        # or adjust the join logic. The original code added \n after </item>.
+        # Let's assume item strings are like '  <item...>...\n  </item>\n'
+        content = "".join(selected_items)
+        xml_str = f"<{root_name}>\n{content}</{root_name}>\n"
+        return xml_str
+
     def convert_query_results_to_xml_schema(self, query_results, max_length=None, root_name="context"):
+        """
+        Converts query results to XML, respecting max_length using binary search
+        to minimize calls to count_context_length.
+        """
+        # --- 1. Data Preparation ---
+        # Flatten results consistently (same as original)
         ids = query_results['ids'][0]
         page_contents = query_results['documents'][0]
         metadatas = query_results['metadatas'][0]
 
-        xml_str = f"<{root_name}>\n"
+        if not ids:
+            return f"<{root_name}>\n</{root_name}>\n"  # Handle empty input
 
+        # --- 2. Prepare Individual Item XML Strings ---
+        item_xml_strings = []
         for i in range(len(ids)):
             source = metadatas[i].get("url", metadatas[i].get("pdf_name", None))
             xml_item_str = ""
             if source is None:
-                xml_item_str += f'  <item>'
+                xml_item_str += f'  <item id="{ids[i]}">'  # Added ID for potential usefulness
             else:
-                xml_item_str += f'  <item source="{source}">'
-            xml_item_str += f"{page_contents[i]}\n  </item>\n"
-            if max_length is not None and count_context_length(xml_str + xml_item_str + f"</{root_name}>\n")  > max_length:
-                break
+                # Basic escaping for XML attribute value
+                safe_source = source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"",
+                                                                                                             "&quot;").replace(
+                    "'", "&apos;")
+                xml_item_str += f'  <item id="{ids[i]}" source="{safe_source}">'
+
+            # Basic escaping for XML content (needs more robust solution for production)
+            safe_content = page_contents[i].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            xml_item_str += f"{safe_content}\n  </item>\n"
+            item_xml_strings.append(xml_item_str)
+
+        total_items = len(item_xml_strings)
+
+        # If no length limit, return all items
+        if max_length is None:
+            return self._build_xml_string(item_xml_strings, total_items, root_name)
+
+        # --- 3. Binary Search for Optimal Number of Items (k) ---
+        best_k = 0  # Stores the highest k that fits within max_length
+        low = 0
+        high = total_items  # Search space is [0, total_items] inclusive for k
+
+        # Pre-calculate length of empty root tags as a baseline minimum
+        empty_xml = self._build_xml_string([], 0, root_name)
+        min_possible_length = count_context_length(empty_xml)
+
+        if max_length < min_possible_length:
+            print(
+                f"Warning: max_length ({max_length}) is less than the minimum length of empty root tags ({min_possible_length}). Returning empty context.")
+            return empty_xml
+
+        search_steps = 0  # For analysis/logging
+
+        while low <= high:
+            search_steps += 1
+            mid = (low + high) // 2
+            if mid == 0:  # Ensure we check the empty case if needed
+                current_length = min_possible_length
             else:
-                xml_str += xml_item_str
+                # Build XML string for 'mid' items
+                test_xml_str = self._build_xml_string(item_xml_strings, mid, root_name)
+                # Call the expensive function
+                current_length = count_context_length(test_xml_str)
 
+            # print(f"  Binary Search: Trying k={mid}, length={current_length}, max_length={max_length}") # Debug logging
 
-        xml_str += f"</{root_name}>\n"
-        return xml_str
+            if current_length <= max_length:
+                # This number of items fits. It might be the optimal K.
+                # Try including more items.
+                best_k = mid
+                low = mid + 1
+            else:
+                # This number of items is too long.
+                # Try including fewer items.
+                high = mid - 1
+
+        print(
+            f"Collection Results: Found optimal {best_k} items out of {total_items} using binary search ({search_steps} checks).")
+
+        # --- 4. Construct Final XML ---
+        final_xml_str = self._build_xml_string(item_xml_strings, best_k, root_name)
+
+        # Optional: Final verification (mostly for debugging the binary search logic)
+        # final_length = count_context_length(final_xml_str)
+        # print(f"Final XML length: {final_length} (max_length: {max_length})")
+        # assert final_length <= max_length or best_k == 0 # Should always hold if max_length >= min_possible_length
+
+        return final_xml_str
 
     def add_short_memory(self, text: str):
+        self.update_last_use_context("Short-Term Memory")
         util.save_text(f"{self.agent_dir}/{self.name}_memory", text)
         pass
 
@@ -677,6 +780,15 @@ class Agent:
             if code.frontend:
                 return code
         return None
+
+    def get_code_script(self, name: str):
+        for code in self.code_list:
+            if code.get_name() == name:
+                return code.code
+        return None
+
+    def get_reply(self):
+        return self.clean_chat.get_last_messages_of_sender("Agent")
 
     def get_chroma_collection(self):
         return self.chroma_collection

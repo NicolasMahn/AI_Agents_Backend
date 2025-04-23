@@ -10,11 +10,11 @@ class Plan:
     def set_plan(self, plan):
         self.plan = plan
         self.current_step = 0
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=1, always_display=True)
+        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def next_step(self):
         self.current_step += 1
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=1, always_display=True)
+        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def get_plan_as_xml_str(self):
         xml_str = "<plan>"
@@ -41,11 +41,11 @@ class Plan:
 
     def __setitem__(self, index, value):
         self.plan[index] = value
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=1, always_display=True)
+        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def __delitem__(self, index):
         del self.plan[index]
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=1, always_display=True)
+        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def is_done(self):
         return self.current_step >= len(self.plan)

@@ -73,24 +73,33 @@ class Chat(list):
                     messages.append(message)
             else:
                 break
-        return messages
+        if len(messages) == 1:
+            return messages[0]['text']
+        else:
+            messages.reverse()
+            messages = [message['text'] for message in messages]
+            message_str = ""
+            for message in messages:
+                message_str += f"{message}\n"
+            return message_str
 
     def get_last_n_tokens_in_xml_str(self, n: int):
         xml_str = ""
         for i in range(n):
             try:
-                last_message = self[i]
+                last_message = self[-(i+1)]
             except IndexError:
                 break
-            xml_str_message = f"    <message sender='{last_message['sender']}'>\n<![CDATA[\n{last_message['text']}\n]]>\n</message>"
+            xml_str_message = f"<message sender='{last_message['sender']}'>\n<![CDATA[\n{last_message['text']}\n]]>\n</message>"
             tmp_xml_str = f"{xml_str_message}\n{xml_str}"
             if count_context_length(tmp_xml_str) > (n-100):
-                omitted_messages = f"    <message sender='System'>Omitted {len(self) - i} messages</message>"
+                omitted_messages = f"<message sender='System'>Omitted {len(self) - i} messages</message>"
                 xml_str = f"{omitted_messages}\n{xml_str}"
                 break
             else:
                 xml_str = tmp_xml_str
         xml_str = f'<chat>\n{xml_str}\n</chat>'
+        # print(f"XML string: {xml_str}")
         return xml_str
 
     def get_last_sender(self):

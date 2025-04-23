@@ -30,17 +30,16 @@ def replace_agent(agent_obj, agent_name: str):
     agents.append(agent_obj)
 
 def get_available_models():
-    models = list(config.max_tokens.keys())
-    models.remove("text-embedding-ada-002")
-    models.remove("default")
+    models = list(config.llm_names.keys())
     return models
 
-def set_model(model):
-    if model in config.max_tokens.keys():
+def set_model(model_name):
+    if model_name in config.llm_names.keys():
+        model = config.llm_names[model_name]
         config.selected_model = model
         config.max_tokens["default"] = config.max_tokens[config.selected_model]
-        config.max_context_tokens = config.max_tokens[config.selected_model] - 10000 - config.max_prompt_tokens #minus 10000 for instructions + safety buffer
-        if model in config.MODEL_OWNER["google"]:
+        config.max_context_tokens = config.max_tokens[config.selected_model] - config.max_instructions_size - config.max_prompt_tokens
+        if 999999 < config.max_tokens[config.selected_model]:
             config.max_chat_tokens = 20 * config.max_generic_content_length
         else:
             config.max_chat_tokens = 4 * config.max_generic_content_length
@@ -48,7 +47,7 @@ def set_model(model):
     return False
 
 def get_model():
-    return config.selected_model
+    return next((k for k, v in config.llm_names.items() if v == config.selected_model), None)
 
 def agent_reset(agent_name: str):
     agent = get_agent(agent_name)

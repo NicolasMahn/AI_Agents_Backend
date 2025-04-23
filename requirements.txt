@@ -17,3 +17,6 @@ tabulate
 PyPDF2
 BeautifulSoup4
 playwright
+transformers
+huggingface_hub
+gunicorn

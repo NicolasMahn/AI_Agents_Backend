@@ -70,17 +70,17 @@ class PlanningAgent(Agent):
             )
 
             entire_prompt = \
-                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+                f"{self._prompt}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
             self.prompt(entire_prompt)
             i += 1
 
         while not self.plan.is_done():
             print(f"Executing prompt {i}")
             step = self.plan.get_current_step()
-            message = f"Working on step: {step} ({self.plan.get_current_step_index()}/{len(self.plan)})"
-            self.clean_chat.add_message(message, sender="System")
-            self.chat.add_message(message, sender="System")
-            self.complete_chat.add_message(message, sender="System")
+            message = f"Working on step: {step} ({self.plan.get_current_step_index()+1}/{len(self.plan)})"
+            self.clean_chat.add_message("System", message)
+            self.chat.add_message("System", message)
+            self.complete_chat.add_message("System", message)
 
             self._prompt = (
                 f"You are executing your plan step-by-step.\n\n"
@@ -96,7 +96,7 @@ class PlanningAgent(Agent):
                 f"Proceed with executing the current step."
             )
             entire_prompt = \
-                f"{self._prompt}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+                f"{self._prompt}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
             self.prompt(entire_prompt)
             i += 1
 
@@ -105,7 +105,7 @@ class PlanningAgent(Agent):
                 "It seems like you forgot to reply to the User after finishing the query in the previous message. "
                 "Please explain to the User what you have done.")
             entire_prompt = \
-                f"{self.plan}\n---\n{self.generate_context_data()}\n---\n{self.get_instruction_str()}\n---\n{instructions}"
+                f"{self.plan}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
             self.prompt(entire_prompt)
             i += 1
         self.replying = False

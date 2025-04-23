@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import io
 import os
 import time
 from http.client import responses
@@ -8,19 +10,18 @@ import openai
 from PIL import Image
 from google import genai
 from google.genai import types
+from openai import OpenAI
 
+import agent_manager
 import config
 from llm_functions.llm_util import is_context_too_long, count_context_length
-from scrt import OPENAI_KEY, GOOGLE_KEY
+from scrt import OPENAI_KEY, GOOGLE_KEY, LAMBDA_KEY
 
 from config import DEBUG
 from util.colors import PINK, RESET, BLUE, GREEN
 
-def basic_prompt(prompt: str, role: str = "You are a helpful assistant.", temperature: float = 0.2,
-                 model: str ="default") -> str:
-    if model not in config.max_tokens or model == "default":
-        print(f"{PINK} Default Model: {config.selected_model}{RESET}")
-        model = config.selected_model
+def basic_prompt(prompt: str, role: str = "You are a helpful assistant.") -> str:
+    model = config.selected_model
 
     if DEBUG:
         print(f"--------Invoking Model: {model}-------------")
@@ -28,9 +29,11 @@ def basic_prompt(prompt: str, role: str = "You are a helpful assistant.", temper
         # print(f"{BLUE}PROMPT:\n{prompt}{RESET}")
 
     if model in config.MODEL_OWNER["google"]:
-        response = _basic_prompt_gemini(prompt, role, temperature, model)
+        response = _basic_prompt_gemini(prompt, role, model)
+    elif model in config.MODEL_OWNER["openai"]:
+        response = _basic_prompt_openai(prompt, role, model)
     else:
-        response = _basic_prompt_openai(prompt, role, temperature, model)
+        response = _basic_prompt_lambda(prompt, role, model)
 
 
     if DEBUG:
@@ -38,7 +41,38 @@ def basic_prompt(prompt: str, role: str = "You are a helpful assistant.", temper
         print(f"---")
     return response
 
-def _basic_prompt_openai(prompt: str, role: str, temperature: float, model: str) -> str:
+
+def _basic_prompt_lambda(prompt: str, role: str, model: str) -> str:
+    lambda_api_key = LAMBDA_KEY
+    lambda_api_base = "https://api.lambda.ai/v1"
+
+    try:
+        if is_context_too_long(prompt, model):
+            raise ValueError("Prompt exceeds the maximum token limit.")
+    except ValueError as e:
+        print(f"Warning: {e}")
+
+    client = OpenAI(
+        api_key=lambda_api_key,
+        base_url=lambda_api_base,
+    )
+
+    response_text = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": role},
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model = model
+    )
+    print(f"Response: {response_text}")
+    return response_text.choices[0].message.content
+
+
+
+def _basic_prompt_openai(prompt: str, role: str, model: str) -> str:
     openai.api_key = OPENAI_KEY
 
     try:
@@ -47,17 +81,18 @@ def _basic_prompt_openai(prompt: str, role: str, temperature: float, model: str)
     except ValueError as e:
         print(f"Warning: {e}")
 
-    if model.startswith("o3"):
-        reasoning_effort = None
-        if model == "o3-mini-high":
-            reasoning_effort = "high"
-            model = "o3-mini"
-        elif model == "o3-mini-medium":
-            reasoning_effort = "medium"
-            model = "o3-mini"
-        elif model == "o3-mini-low":
-            reasoning_effort = "low"
-            model = "o3-mini"
+    reasoning_effort = None
+    if model.endswith("-high"):
+        reasoning_effort = "high"
+        model = model[:-5]  # Remove "-high" suffix
+    elif model.endswith("-medium"):
+        reasoning_effort = "medium"
+        model = model[:-7]
+    elif model.endswith("-low"):
+        reasoning_effort = "low"
+        model = model[:-4]
+
+    if reasoning_effort:
         response_text = openai.chat.completions.create(
             model=model,
             messages=[
@@ -65,7 +100,6 @@ def _basic_prompt_openai(prompt: str, role: str, temperature: float, model: str)
                 {
                     "role": "user",
                     "content": prompt,
-                    "temperature": temperature
                 }
             ],
             reasoning_effort=reasoning_effort
@@ -78,13 +112,12 @@ def _basic_prompt_openai(prompt: str, role: str, temperature: float, model: str)
                 {
                     "role": "user",
                     "content": prompt,
-                    "temperature": temperature
                 }
             ]
         )
     return response_text.choices[0].message.content
 
-def _basic_prompt_gemini(prompt: str, role: str, temperature: float, model: str) -> str:
+def _basic_prompt_gemini(prompt: str, role: str, model: str) -> str:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -98,17 +131,11 @@ def _basic_prompt_gemini(prompt: str, role: str, temperature: float, model: str)
     except ValueError as e:
         print(f"Warning: {e}")
 
-    if DEBUG:
-        print("Estimated Number of Tokens: ", count_context_length(role_prompt, model))
-
     while True:
         try:
             response = client.models.generate_content(
                 model=model,
                 contents=role_prompt,
-                config=types.GenerateContentConfig(
-                    temperature=temperature
-                )
             )
             break  # Exit the loop if the request is successful
         except genai.errors.ClientError as e:
@@ -117,21 +144,18 @@ def _basic_prompt_gemini(prompt: str, role: str, temperature: float, model: str)
                 print(e)
                 try:
                     str_e = str(e)
+                    retry_delay = None
                     for i in range(len(str_e)):
                         if not str_e[len(str_e)-7+i :-6 + i].isdigit():
                             retry_delay = int(str_e[len(str_e)-7+i:-6 + i])
                             break
-                    print("retry_delay:", retry_delay)
+                    print(f"Quota exceeded. Retrying in {retry_delay} seconds...")
                 except Exception:
-                    print("could not surmise retry_delay using str")
-                    retry_delay = 200
+                    return f"Error: Quota exceeded and unable to parse retry delay. {e}"
 
-
-
-                print(f"Quota exceeded. Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
             else:
-                raise e  # Re-raise the exception if it's not a quota error
+                return f"Error: Quota exceeded {e}"
 
     # Error handling (good practice)
     if not response.candidates:
@@ -155,12 +179,111 @@ def _basic_prompt_gemini(prompt: str, role: str, temperature: float, model: str)
             print("Full Response:", response)
             return "Error: Could not parse response."
 
+
+
 def get_image_description(
         image_path: str,
         text_prompt: str = "Describe this image in detail.",
         model_name: str = config.DEFAULT_VISION_MODEL,
 ) -> str:
-    return get_image_description_gemini(image_path, text_prompt, model_name)
+    if model_name in config.MODEL_OWNER["openai"]:
+        return get_image_description_openai(image_path, text_prompt, model_name)
+    else:
+        return get_image_description_gemini(image_path, text_prompt, model_name)
+
+
+def get_image_description_openai(
+        image_path: str,
+        text_prompt: str = "Describe this image in detail.",
+        model_name: str = config.DEFAULT_VISION_MODEL,
+) -> str:
+    """
+    Sends an image and a text prompt to an OpenAI vision model and returns the description.
+    Uses default safety settings provided by the API.
+
+    Args:
+        image_path: Path to the image file.
+        text_prompt: The text instruction for the LLM (e.g., "Describe this image.").
+        model_name: The specific OpenAI vision model to use.
+    Returns:
+        The textual description generated by the model, or an error message.
+    """
+
+    if not os.path.exists(image_path):
+        return f"Error: Image file not found at {image_path}"
+
+    if DEBUG:
+        print(f"{BLUE}--- Invoking Vision Model: {model_name} ---{RESET}")
+        # print(f"Image Path: {image_path}")
+        # print(f"Text Prompt: {text_prompt}")
+
+
+    # --- Image Processing and Encoding ---
+    try:
+        # Load the image using Pillow
+        img = Image.open(image_path)
+
+        output_format = "PNG"
+        mime_type = f"image/{output_format.lower()}"
+
+        # Optional: Convert to RGB if needed (often good practice)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+
+        # Create an in-memory bytes buffer
+        buffered = io.BytesIO()
+        img.save(buffered, format=output_format)
+        img_byte_data = buffered.getvalue()
+
+        # Encode the image bytes to base64
+        base64_image = base64.b64encode(img_byte_data).decode('utf-8')
+
+    except FileNotFoundError:
+         return f"Error: Image file not found at {image_path}"
+    except Exception as img_err:
+        return f"Error: Could not open or process image file: {img_err}"
+
+    # --- Prepare API Payload ---
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": text_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        # Use f-string to create the data URI
+                        "url": f"data:{mime_type};base64,{base64_image}"
+                    }
+                }
+            ]
+        }
+    ]
+
+    # --- API Call ---
+    try:
+        openai.api_key = OPENAI_KEY
+        response = openai.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=300
+        )
+
+        # Extract the response content
+        return response.choices[0].message.content
+
+    except Exception as e:
+        error_msg = f"Error during OpenAI API call: {type(e).__name__} - {e}"
+        if DEBUG:
+            print(f"{PINK}{error_msg}{RESET}")
+        return error_msg
+
+
+
+
 
 def get_image_description_gemini(
         image_path: str,
@@ -178,8 +301,12 @@ def get_image_description_gemini(
     Returns:
         The textual description generated by the model, or an error message.
     """
+
     if not os.path.exists(image_path):
         return f"Error: Image file not found at {image_path}"
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     if DEBUG:
         print(f"{BLUE}--- Invoking Vision Model: {model_name} ---{RESET}")
@@ -269,3 +396,45 @@ def get_image_description_gemini(
             tb_str = traceback.format_exc()
             print(f"{PINK}{error_msg}\nTraceback:\n{tb_str}{RESET}")
         return error_msg
+
+if __name__ == "__main__":
+    # Example usage
+    role = "You are a helpful assistant.\n"
+    question = "What is the meaning of life?\n"
+    prompt = ("Give a funny answer to this question: {dynamic_content} \n"
+              "Answer in 10 words or less.\n"
+              "Give the answer in an xml format. Example:\n"
+              "<answer>42</answer>\n"
+              "Then give a next question that can be answered in a funny way.\n"
+              "Please provide the answer in an xml format as well. Example:\n"
+              "<question>What is Jaguar spelled backwards?</question>\n"
+              )
+
+    evaluation_string = "\n\nFirst Question: " + question + "\n"
+    for model_name in config.llm_names.keys():
+        evaluation_string += f"--------------{model_name}----------------\n"
+        agent_manager.set_model(model_name)
+        response = basic_prompt(prompt.format(dynamic_content=question), role)
+
+        try:
+            answer = response.split("<answer>")[1].split("</answer>")[0]
+            evaluation_string += f"Answer: {answer}\n"
+        except Exception as e:
+            pass
+
+        try:
+            question = response.split("<question>")[1].split("</question>")[0]
+            evaluation_string += f"Next Question: {question}\n"
+        except Exception as e:
+            question = "What is the capital of France?"
+
+        evaluation_string += f"\nFull Response: {response}\n\n"
+
+    print(evaluation_string)
+
+
+
+
+
+
+
