@@ -10,7 +10,7 @@ COPY . /app
 
 # Install Python and other dependencies
 RUN apk add --no-cache \
-    python3=3.9.18-r0 \
+    python3 \
     py3-pip
 
 # Install Playwright and its browsers
