@@ -11,18 +11,7 @@ COPY . /app
 # Install Python and other dependencies
 RUN apk add --no-cache \
     python3=3.9.18-r0 \
-    py3-pip \
-    libnss3 \
-    libatk \
-    libcups \
-    libxcomposite \
-    libxrandr \
-    libxdamage \
-    libxkbcommon \
-    libgbm \
-    libasound2 \
-    pango \
-    gtk+3.0
+    py3-pip
 
 # Install Playwright and its browsers
 RUN pip install --no-cache-dir playwright && playwright install
