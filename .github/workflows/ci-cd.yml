@@ -37,7 +37,7 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build --build-arg CHROMA_HOST=${{ secrets.CHROMA_HOST }} \
+        docker buildx --build-arg CHROMA_HOST=${{ secrets.CHROMA_HOST }} \
                      --build-arg CHROMA_PORT=${{ secrets.CHROMA_PORT }} \
                      --build-arg GOOGLE_KEY=${{ secrets.GOOGLE_KEY }} \
                      --build-arg OPENAI_KEY=${{ secrets.OPENAI_KEY }} \
