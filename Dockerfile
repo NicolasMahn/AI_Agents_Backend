@@ -1,5 +1,5 @@
-# Use the official Docker-in-Docker image as the base
-FROM docker:24.0.5
+# Use python 3.9 slim
+FROM python:3.9-slim
 
 # Set the working directory in the container
 WORKDIR /app
@@ -7,11 +7,8 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-
-# Install Python and other dependencies
-RUN apk add --no-cache \
-    python3 \
-    py3-pip
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright and its browsers
 RUN pip install --no-cache-dir playwright && playwright install
@@ -24,12 +21,12 @@ ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
+# Install docker
+RUN apt-get update && apt-get install -y docker.io
 
 # Start the Docker daemon and build the custom-python image
 RUN dockerd & sleep 5 && docker build -f CustomPythonDockerfile -t custom-python .
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Make port 80 available to the world outside this container
 EXPOSE 5000
