@@ -1,5 +1,5 @@
 # Use official Docker in docker image as a parent image
-FROM docker:20.10.7
+FROM ubuntu:20.04
 
 # Set the working directory in the container
 WORKDIR /app
@@ -25,7 +25,7 @@ ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
 # Install docker
-RUN apt-get update && apt-get install -y docker.io
+RUN apt-get install -y docker.io
 
 # Start the Docker daemon and build the custom-python image
 RUN dockerd & sleep 5 && docker build -f CustomPythonDockerfile -t custom-python .
