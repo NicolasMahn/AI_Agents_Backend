@@ -43,5 +43,5 @@ jobs:
                      --build-arg OPENAI_KEY=${{ secrets.OPENAI_KEY }} \
                      --build-arg LAMBDA_KEY=${{ secrets.LAMBDA_KEY }} \
                      --build-arg HUGGING_FACE_KEY=${{ secrets.HUGGING_FACE_KEY }} \
-                     -t ${{ secrets.DOCKER_USERNAME }}/agent_backend:latest .
+                     -t --privileged ${{ secrets.DOCKER_USERNAME }}/agent_backend:latest .
         docker push ${{ secrets.DOCKER_USERNAME }}/agent_backend:latest
