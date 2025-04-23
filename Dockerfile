@@ -1,11 +1,14 @@
-# Use python 3.9 slim
-FROM python:3.9-slim
+# Use official Docker in docker image as a parent image
+FROM docker:20.10.7
 
 # Set the working directory in the container
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
 COPY . /app
+
+# installing python
+RUN apt-get update && apt-get install -y python3.9 python3-pip
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
