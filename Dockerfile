@@ -7,14 +7,27 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Set non-interactive frontend and configure timezone
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y tzdata python3.9 pip && \
+# Install python3.9, tools to manage its environment, and ensure pip is present for it
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tzdata \
+        python3.9 \
+        python3.9-venv \
+        python3.9-dev \
+        # build-essential contains tools like gcc needed to compile some pip packages
+        build-essential && \
+    # Use the installed python3.9 to ensure pip is installed for it
+    python3.9 -m ensurepip --upgrade && \
+    # Optionally make python3.9 the default python3 (use with caution)
+    # update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1 && \
+    # Clean up apt cache
+    rm -rf /var/lib/apt/lists/* && \
+    # Configure timezone
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
-# Install any needed packages specified in requirements.txt
-RUN pip install -r requirements.txt
+# Now you can install packages using pip for python3.9
+RUN python3.9 -m pip install --no-cache-dir requirements.txt
 
 # Install Playwright and its browsers
 RUN pip install --no-cache-dir playwright && playwright install
