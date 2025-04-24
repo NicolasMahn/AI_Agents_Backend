@@ -1,5 +1,5 @@
 flask~=3.0.3
-chromadb~=0.6.3
+chromadb
 openai~=1.68.2
 tiktoken~=0.9.0
 google-genai
