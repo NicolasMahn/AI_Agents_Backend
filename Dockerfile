@@ -1,5 +1,5 @@
 # Use official Docker in docker image as a parent image
-FROM ubuntu:20.04
+FROM ubuntu:latest
 
 # Set the working directory in the container
 WORKDIR /app
