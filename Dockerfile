@@ -8,6 +8,7 @@ WORKDIR /app
 COPY . /app
 
 # Install python3.9, tools to manage its environment, and ensure pip is present for it
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         tzdata \
