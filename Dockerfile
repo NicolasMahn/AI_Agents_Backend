@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y tzdata python3-full python3-pip && \
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
+RUN python3 -m pip install pip --upgrade
+
 # Install requirements into the virtual environment
 # No --break-system-packages needed here!
 RUN pipx install -r requirements.txt
