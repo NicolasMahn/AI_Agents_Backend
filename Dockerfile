@@ -9,7 +9,7 @@ COPY . /app
 
 # Set non-interactive frontend and configure timezone
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y tzdata python3.9-full pip && \
+RUN apt-get update && apt-get install -y tzdata python3-full pip && \
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
