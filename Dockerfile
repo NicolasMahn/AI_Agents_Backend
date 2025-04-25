@@ -1,5 +1,5 @@
 # Use official Docker in docker image as a parent image
-FROM ubuntu:latest
+FROM docker:stable
 
 
 # Prevents Python from writing pyc files to disc
@@ -15,26 +15,8 @@ WORKDIR /app
 COPY . /app
 
 # Set non-interactive frontend and configure timezone
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y tzdata && \
-    ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
-    dpkg-reconfigure --frontend noninteractive tzdata
-
-
-# Install prerequisites and Python 3.9 from PPA
-RUN apt-get install -y --no-install-recommends \
-    software-properties-common \
-    gnupg \
-    curl && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get install -y --no-install-recommends \
-    python3.9 \
-    python3.9-distutils \
-    python3-pip \
-    python3.9-venv && \
-    # Clean up apt cache
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk update && \
+    apk add python3
 
 # RUN python3 -m pip install pip --upgrade
 
