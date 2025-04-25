@@ -13,21 +13,18 @@ RUN apt-get update && apt-get install -y tzdata python3-full pip && \
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade pip
-
 # Install requirements into the virtual environment
 # No --break-system-packages needed here!
-RUN pip install -r requirements.txt
+RUN pipx install -r requirements.txt
 
 # Subsequent steps (Playwright install, Hugging Face, etc.)
 # These will now use the Python/pip from the activated venv
-RUN pip install --no-cache-dir playwright && playwright install
+RUN pipx install --no-cache-dir playwright && playwright install
 
 # Set up Hugging Face authentication
 ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
-RUN pip install --no-cache-dir huggingface_hub
+RUN pipx install --no-cache-dir huggingface_hub
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
 # Install docker
