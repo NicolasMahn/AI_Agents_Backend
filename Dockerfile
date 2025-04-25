@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y tzdata python3-full python3-pip && \
 
 # Install requirements into the virtual environment
 # No --break-system-packages needed here!
-RUN pip install -r requirements.txt
+RUN python3 -m pip install -r requirements.txt
 
 # Subsequent steps (Playwright install, Hugging Face, etc.)
 # These will now use the Python/pip from the activated venv
