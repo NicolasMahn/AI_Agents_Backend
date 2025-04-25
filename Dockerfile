@@ -1,5 +1,11 @@
 # Use official Docker in docker image as a parent image
-FROM python:3.9
+FROM ubuntu:latest
+
+
+# Prevents Python from writing pyc files to disc
+ENV PYTHONDONTWRITEBYTECODE 1
+# Ensures Python output is sent straight to terminal without being buffered
+ENV PYTHONUNBUFFERED 1
 
 
 # Set the working directory in the container
@@ -7,6 +13,30 @@ WORKDIR /app
 
 # Copy the current directory contents into the container at /app
 COPY . /app
+
+# Set non-interactive frontend and configure timezone
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+
+# Install prerequisites and Python 3.9 from PPA
+RUN apt-get install -y --no-install-recommends \
+    software-properties-common \
+    gnupg \
+    curl && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get install -y --no-install-recommends \
+    python3.9 \
+    python3.9-distutils \
+    python3-pip \
+    python3.9-venv && \
+    # Clean up apt cache
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# RUN python3 -m pip install pip --upgrade
 
 # Install requirements
 RUN pip install -r requirements.txt
@@ -20,15 +50,8 @@ ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
 RUN pip install --no-cache-dir huggingface_hub
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
-# Install Docker
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io
+# Install docker
+RUN apt-get install -y docker.io
 
 # Start the Docker daemon and build the custom-python image
 RUN dockerd & sleep 5 && docker build -f CustomPythonDockerfile -t custom-python .
