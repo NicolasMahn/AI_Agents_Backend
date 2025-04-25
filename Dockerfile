@@ -1,12 +1,10 @@
 # Use official Docker in docker image as a parent image
 FROM docker:stable
 
-
 # Prevents Python from writing pyc files to disc
 ENV PYTHONDONTWRITEBYTECODE 1
 # Ensures Python output is sent straight to terminal without being buffered
 ENV PYTHONUNBUFFERED 1
-
 
 # Set the working directory in the container
 WORKDIR /app
@@ -14,12 +12,15 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+
+
 # Set non-interactive frontend and configure timezone
 RUN apk update && \
     apk add python3
 
 # install pip
 RUN python3 -m ensurepip --upgrade
+RUN python3 -m pip install --upgrade pip
 
 # Install requirements
 RUN pip install -r requirements.txt
