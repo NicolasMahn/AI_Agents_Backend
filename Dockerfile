@@ -20,8 +20,15 @@ ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
 RUN pip install --no-cache-dir huggingface_hub
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
-# Install docker
-RUN apt-get install -y docker.io
+# Install Docker
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io
 
 # Start the Docker daemon and build the custom-python image
 RUN dockerd & sleep 5 && docker build -f CustomPythonDockerfile -t custom-python .
