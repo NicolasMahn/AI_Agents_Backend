@@ -33,7 +33,7 @@ RUN pip install --no-cache-dir huggingface_hub
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
 # Install docker
-RUN apt-get install -y docker.io
+#RUN apt-get install -y docker.io
 
 # Start the Docker daemon and build the custom-python image
 RUN dockerd & sleep 5 && docker build -f CustomPythonDockerfile -t custom-python .
