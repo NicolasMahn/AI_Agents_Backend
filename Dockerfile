@@ -22,7 +22,7 @@ RUN apk update && \
 # RUN python3 -m pip install pip --upgrade
 
 # Install requirements
-RUN sudo pip install -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Install Playwright
 RUN pip install --no-cache-dir playwright && playwright install
