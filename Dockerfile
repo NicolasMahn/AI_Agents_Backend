@@ -17,7 +17,7 @@ COPY . /app
 # Set non-interactive frontend and configure timezone
 RUN apk update && \
     apk add python3 && \
-    apk add python3-pip
+    apk add pip
 
 # RUN python3 -m pip install pip --upgrade
 
