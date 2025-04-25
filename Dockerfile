@@ -19,7 +19,7 @@ RUN apk update && \
     apk add python3
 
 # install pip
-RUN python -m ensurepip --upgrade
+RUN python3 -m ensurepip --upgrade
 
 # Install requirements
 RUN pip install -r requirements.txt
