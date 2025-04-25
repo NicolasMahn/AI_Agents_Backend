@@ -1,6 +1,13 @@
 # Use official Docker in docker image as a parent image
 FROM ubuntu:latest
 
+
+# Prevents Python from writing pyc files to disc
+ENV PYTHONDONTWRITEBYTECODE 1
+# Ensures Python output is sent straight to terminal without being buffered
+ENV PYTHONUNBUFFERED 1
+
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -17,7 +24,7 @@ RUN apt-get update && apt-get install -y tzdata python3-full python3-pip && \
 
 # Install requirements into the virtual environment
 # No --break-system-packages needed here!
-RUN python3 -m pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 # Subsequent steps (Playwright install, Hugging Face, etc.)
 # These will now use the Python/pip from the activated venv
