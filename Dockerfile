@@ -1,11 +1,5 @@
 # Use official Docker in docker image as a parent image
-FROM ubuntu:latest
-
-
-# Prevents Python from writing pyc files to disc
-ENV PYTHONDONTWRITEBYTECODE 1
-# Ensures Python output is sent straight to terminal without being buffered
-ENV PYTHONUNBUFFERED 1
+FROM python3.9
 
 
 # Set the working directory in the container
@@ -14,20 +8,10 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Set non-interactive frontend and configure timezone
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y tzdata python3-full python3-pip && \
-    ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
-    dpkg-reconfigure --frontend noninteractive tzdata
+# Install requirements
+RUN pip install -r requirements.txt
 
-# RUN python3 -m pip install pip --upgrade
-
-# Install requirements into the virtual environment
-# No --break-system-packages needed here!
-RUN pip3 install -r requirements.txt
-
-# Subsequent steps (Playwright install, Hugging Face, etc.)
-# These will now use the Python/pip from the activated venv
+# Install Playwright
 RUN pip install --no-cache-dir playwright && playwright install
 
 # Set up Hugging Face authentication
