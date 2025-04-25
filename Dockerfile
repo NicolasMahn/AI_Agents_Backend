@@ -17,16 +17,16 @@ RUN python3 -m pip install pip --upgrade
 
 # Install requirements into the virtual environment
 # No --break-system-packages needed here!
-RUN pipx install -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Subsequent steps (Playwright install, Hugging Face, etc.)
 # These will now use the Python/pip from the activated venv
-RUN pipx install --no-cache-dir playwright && playwright install
+RUN pip install --no-cache-dir playwright && playwright install
 
 # Set up Hugging Face authentication
 ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
-RUN pipx install --no-cache-dir huggingface_hub
+RUN pip install --no-cache-dir huggingface_hub
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
 # Install docker
