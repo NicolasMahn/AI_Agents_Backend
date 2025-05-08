@@ -95,17 +95,13 @@ def calculate_cost_per_use(
     return total_cost_per_iteration, intelligence_cost_index, coding_intelligence_cost_index
 
 # --- New Function to Fill CSV ---
-def fill_llm_info(csv_filepath: str = 'llm_info.csv',
-                  input_tokens: int = 2000,
-                  output_tokens: int = 500):
+def fill_llm_info(csv_filepath: str = 'llm_info.csv'):
     """
     Reads an LLM info CSV, calculates cost metrics for each model,
     and writes the updated data back to the file.
 
     Args:
         csv_filepath: Path to the CSV file.
-        input_tokens: The standard number of input tokens to use for cost calculation.
-        output_tokens: The standard average number of output tokens for cost calculation.
     """
     print(f"--- Starting to process {csv_filepath} ---")
     if not os.path.exists(csv_filepath):
@@ -141,6 +137,8 @@ def fill_llm_info(csv_filepath: str = 'llm_info.csv',
 
                     input_price_str = price_pattern.sub('', row.get('Price per 1M Input Tokens', '0') or '0')
                     output_price_str = price_pattern.sub('', row.get('Price per 1M Output Tokens', '0') or '0')
+                    input_tokens = int(row.get('Max Input Tokens', '2000') or '2000')
+                    output_tokens = float(row.get('Median Output Tokens', '200') or '200')
 
                     input_price = float(input_price_str)
                     output_price = float(output_price_str)

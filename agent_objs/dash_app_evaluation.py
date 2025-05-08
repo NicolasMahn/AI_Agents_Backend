@@ -2,9 +2,9 @@ import time
 
 from bs4 import BeautifulSoup
 import requests
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-from llm_functions.llm_api_wrapper import get_image_description_gemini, get_image_description
+from llm_functions.llm_api_wrapper import get_image_description
 
 TIMEOUT = 10000
 

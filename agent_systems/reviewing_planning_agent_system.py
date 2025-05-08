@@ -1,57 +1,39 @@
+
 from agent_objs.plan import Plan
-from agents import Agent
+from agent_systems.base_agent_system import BaseAgentSystem
+from agents.critic_agent import CriticAgent
+from agents.planning_agent import PlanningAgent
+from agents.summarizing_agent import SummarizingAgent
+from agents.tinker_agent import TinkerAgent
 
 
-class ReviewingPlanningAgent(Agent):
-    def __init__(self, name="Planning Agent",
-                 role="You are a planning agent that generates a plan with a flexible number of steps and then executes each step.\n"
-                      "You are given tasks by the User and converse with him in a chat. \n"
-                      "Your handle in the chat is `Planning Agent`. "
-                      "The User can only see information in the `<response>` section of the chat (explained below..)\n",
-                 chroma_collection = "python"
-                 ):
-        super().__init__(name, role, chroma_collection)
+class ReviewingPlanningAgentSystem(BaseAgentSystem):
+    def __init__(self, system_name=None, description=None, model_for_minor_agents=None):
+        if system_name is None:
+            system_name="Reviewing Agent System"
+        if description is None:
+            description = ("An AI agent system, where an Agent sets a plan beforehand. "
+                           "That two further agents work together to complete. "
+                           "One agent solves the users requests, "
+                           "and another agent verifies the completeness of the first agent.\n")
+        self.planning_agent = PlanningAgent(self)
+        self.tinker_agent = TinkerAgent(self)
+        self.critic_agent = CriticAgent(self, model=model_for_minor_agents)
+        self.summarizing_agent = SummarizingAgent(self, model=model_for_minor_agents)
+        agents = [self.planning_agent, self.tinker_agent, self.critic_agent, self.summarizing_agent]
+        super().__init__(system_name, description, agents)
 
         self.plan = Plan(self)
-
-        self.add_custom_command_instructions(
-            name="planning",
-            instructions=("## **Planning**\n"
-                "When faced with a complex task, break it down into a series of logical, manageable steps. This structured approach will help you address the problem thoroughly and systematically.\n\n"
-                "### **Plan Structure**\n"
-                "Generate your plan using the following XML-like format:\n\n"
-                "```xml\n"
-                "<plan>\n"
-                "   <step>Define the problem</step>\n"
-                "   <step>Gather relevant information</step>\n"
-                "   <step>Analyze the information</step>\n"
-                "   <step>Develop a solution</step>\n"
-                "   <step>Review and finalize your answer</step>\n"
-                "</plan>\n"
-                "```\n\n"
-                "### **Dynamic Adjustments**\n"
-                "If you realize that additional steps are needed or adjustments are required, update your plan accordingly by adding, modifying, or removing steps. Ensure that your plan always reflects your current approach.\n\n"
-                "### **Completion Confirmation**\n"
-                "Once all steps have been executed, provide a final summary that outlines your process and delivers the comprehensive answer to the user's query.\n\n"
-                "### **Handling Uncertainties**\n"
-                "If any step is unclear or you require further clarification, note these uncertainties during execution and adjust your plan as needed before proceeding.\n\n")
-        )
-
         self.max_planning_iterations = 5
+        self.max_iterations = 5
 
     def prompt_agent(self):
         self.replying = True
         self._prompt = self.clean_chat.get_last_messages_of_sender('User')
 
         i = 1
+
         while i < self.max_planning_iterations:
-
-            self.command_instructions["response"]["active"] = False
-            self.command_instructions["code"]["active"] = False
-            self.command_instructions["query"]["active"] = False
-            self.command_instructions["document"]["active"] = False
-            self.command_instructions["search"]["active"] = False
-
             print(f"Developing Plan ({i})")
             instructions = (
                 f"# **Instructions**\n"
@@ -76,11 +58,11 @@ class ReviewingPlanningAgent(Agent):
             )
 
             entire_prompt = \
-                f"{self._prompt}\n---\n{instructions}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
-            self.prompt(entire_prompt)
+                f"{self._prompt}\n\n---\n\n{instructions}"
+            self.prompt(entire_prompt, self.planning_agent)
             i += 1
 
-            if not self.extraction_failure:
+            if not self.extraction_failure and self.plan.is_set():
                 instructions_validate_plan = (
                     f"**Your Task:** Review the plan you just generated to address the user's request (`{self._prompt}`).\n\n"
                     f"**Generated Plan:**\n```xml\n{self.plan}\n```\n\n"
@@ -94,13 +76,10 @@ class ReviewingPlanningAgent(Agent):
                     f"* **If YES:** Explain briefly why it meets the criteria. **End your entire output *only* with the tag `<Yes>`.**\n"
                     f"* **If NO:** Explain the specific weaknesses or missing elements. Suggest concrete improvements or which steps need revision. **End your entire output *only* with the tag `<No>`.**"
                 )
+                self.prompt(instructions_validate_plan, self.critic_agent)
 
-                entire_prompt = \
-                    f"{instructions_validate_plan}\n---\n{self.generate_context_data(status_info=True)}---\n**Here are the Instructions for reference, but they can not be used in this prompt:**\n{self.get_instruction_str()}"
-                if self.prompt(entire_prompt, yes_no_prompt=True):
+                if self.critic_agent.requirements_met:
                     break
-
-        self.command_instructions["response"]["active"] = True
 
         instructions_summarize_plan = (
             f"**Your Task:** Summarize the execution plan for the user.\n\n"
@@ -110,14 +89,9 @@ class ReviewingPlanningAgent(Agent):
         )
 
         entire_prompt = \
-            f"{self._prompt}\n---\n{instructions_summarize_plan}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
-        self.prompt(entire_prompt)
+            f"{self._prompt}\n\n---\n\n{instructions_summarize_plan}"
+        self.prompt(entire_prompt, self.summarizing_agent)
 
-        self.command_instructions["response"]["active"] = False
-        self.command_instructions["code"]["active"] = True
-        self.command_instructions["query"]["active"] = True
-        self.command_instructions["document"]["active"] = True
-        self.command_instructions["search"]["active"] = False # TODO
 
         while not self.plan.is_done():
             step = self.plan.get_current_step()
@@ -142,8 +116,8 @@ class ReviewingPlanningAgent(Agent):
                     f"Perform the action(s) now."
                 )
                 entire_prompt = \
-                    f"{self._prompt}\n---\n{instructions_do_step}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
-                self.prompt(entire_prompt)
+                    f"{self._prompt}\n\n---\n\n{instructions_do_step}"
+                self.prompt(entire_prompt, self.tinker_agent)
                 i += 1
 
                 if not self.extraction_failure:
@@ -157,16 +131,10 @@ class ReviewingPlanningAgent(Agent):
                     )
 
                     entire_prompt = \
-                        f"{self._prompt}\n---\n{instructions_validate_step}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
-                    if self.prompt(entire_prompt, yes_no_prompt=True):
+                        f"{self._prompt}\n\n---\n\n{instructions_validate_step}"
+                    if self.prompt(entire_prompt, self.critic_agent):
                         self.plan.next_step()
                         break
-
-        self.command_instructions["response"]["active"] = True
-        self.command_instructions["code"]["active"] = False
-        self.command_instructions["query"]["active"] = False
-        self.command_instructions["document"]["active"] = False
-        self.command_instructions["search"]["active"] = False
 
         instructions_final_summary = (
             f"**Your Task:** All planned steps have been executed successfully. Provide the complete and final response to the user, synthesizing the results and summarizing the process.\n\n"
@@ -182,15 +150,19 @@ class ReviewingPlanningAgent(Agent):
             "5.  Be **self-contained and understandable** from the user's perspective (remembering they saw their prompts, the initial plan summary, and `<code>` outputs).\n\n"
             f"This is the concluding response for the user's request. Ensure it is complete and accurate. You may use `<long_memory>` if appropriate."
         )
+        self.prompt(instructions_final_summary, self.summarizing_agent)
 
-        entire_prompt = \
-            f"{instructions_final_summary}\n---\n{self.get_instruction_str()}\n---\n{self.generate_context_data()}"
-        self.prompt(entire_prompt)
-
-        self.command_instructions["code"]["active"] = True
-        self.command_instructions["query"]["active"] = True
-        self.command_instructions["document"]["active"] = True
-        self.command_instructions["search"]["active"] = False # TODO
+        self.plan = Plan(self)
 
         self.replying = False
         pass
+
+class ReviewingPlanningAgentSystemWithLesserCritic(ReviewingPlanningAgentSystem):
+    def __init__(self):
+        system_name = "Reviewing Planning Agent System with Lesser Critic"
+        description = ("An AI agent system, where an Agent sets a plan beforehand. "
+                       "That two further agents work together to complete. "
+                       "One agent solves the users requests, "
+                       "and another agent verifies the completeness of the first agent.\n"
+                       "The critic agent is a smaller model (Llama 3.3 70B), which is less expensive to run.\n")
+        super().__init__(system_name, description, model_for_minor_agents="llama3.3-70b-instruct-fp8")

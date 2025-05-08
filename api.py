@@ -1,20 +1,43 @@
 import os
 import threading
 import time
-
+from flask_socketio import SocketIO, emit
 from flask import Flask, jsonify, request, send_file
 
 import agent_manager
-import agent_objs
+from agent_objs import chat, code_manager
 from util import decode_url_str
-import atexit
 app = Flask(__name__)
+socketio = SocketIO(app, logger=True, engineio_logger=True,  async_mode='threading', cors_allowed_origins="*") # Initialize SocketIO with Flask
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+    send_message("Backend is live!")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+def send_message(message, event="message"):
+    try:
+        socketio.emit(event, message, namespace='/')
+    except Exception as e:
+        print(f"Error emitting SocketIO message: {e}")
 
 @app.route('/get_agents', methods=['GET'])
 def get_agents():
     agents = agent_manager.get_agents()
     return jsonify(agents)
 
+@app.route('/get_agent_description/<url_agent_name>', methods=['GET'])
+def get_agent_description(url_agent_name):
+    agent_name = decode_url_str(url_agent_name)
+    description = agent_manager.get_agent_description(agent_name)
+    if description:
+        return jsonify(description)
+    else:
+        return jsonify({'error': f'Agent `{agent_name}` not found'}), 404
 
 @app.route('/<url_agent_name>/reset_agent', methods=['DELETE'])
 def reset_agent(url_agent_name):
@@ -33,7 +56,7 @@ def upload_file(url_agent_name):
     filename = upload_contents['filename']
     agent.upload_file(upload_contents['contents'], filename)
 
-    if filename in os.listdir(os.path.join(agent.agent_dir, 'uploads')):
+    if filename in os.listdir(os.path.join(agent.agent_system_dir, 'uploads')):
         return jsonify({'message': 'File uploaded'})
     else:
         return jsonify({'error': 'File upload failed'}), 500
@@ -114,10 +137,12 @@ def get_available_models():
 @app.route('/set_model/<model>', methods=['POST'])
 def set_model(model):
     if agent_manager.set_model(model):
-        print(f'Model set to `{model}`')
+        print(f'Set Model to `{model}`')
+        send_message(f'Model is set.', "model_switch")
         return jsonify({'message': f'Model set to `{model}`'})
     else:
         print(f'Model `{model}` not available')
+        send_message("Failed to set model.", "model_switch")
         return jsonify({'error': f'Model `{model}` not available'}), 404
 
 @app.route('/get_model', methods=['GET'])
@@ -137,8 +162,8 @@ def get_file(file_path):
 
 # --- api calls intended specifically for DataSciBench
 
-@app.route('/<url_agent_name>/prompt_for_datascibench/', methods=['POST'])
-def prompt_for_datascibench(url_agent_name):
+@app.route('/<url_agent_name>/prompt_for_bench/', methods=['POST'])
+def prompt_for_bench(url_agent_name):
     data = request.get_json()
     if not data or not isinstance(data, dict):
         return jsonify({'error': 'Invalid input'}), 400
@@ -151,7 +176,7 @@ def prompt_for_datascibench(url_agent_name):
                 time.sleep(0.1)
 
             if 0 == len(agent.get_code_names()):
-                return jsonify(agent.get_reply())
+                return jsonify(agent.get_reply()) # Deprecated, needs fix
 
             code_name = agent.get_code_names()[-1]
             return jsonify(str(agent.get_reply()) + "\n---\n```python\n" + agent.get_code_script(code_name) + "\n```")
@@ -162,6 +187,8 @@ def prompt_for_datascibench(url_agent_name):
     except KeyError as e:
         return jsonify({'error': f'Missing key: {e}'}), 400
 
+chat.register_message_callback(send_message)
+code_manager.register_message_callback(send_message)
 
 if __name__ == '__main__':
     app.run(debug=False)

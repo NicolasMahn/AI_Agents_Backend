@@ -2,19 +2,19 @@
 
 class Plan:
 
-    def __init__(self, agent):
-        self.agent = agent
+    def __init__(self, agent_system):
+        self.agent_system = agent_system
         self.current_step = 0
         self.plan = []
 
     def set_plan(self, plan):
         self.plan = plan
         self.current_step = 0
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
+        self.agent_system.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def next_step(self):
         self.current_step += 1
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
+        self.agent_system.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def get_plan_as_xml_str(self):
         xml_str = "<plan>"
@@ -24,8 +24,12 @@ class Plan:
             else:
                 xml_str += f"<step>{step}</step>"
         xml_str += "</plan>"
-
         return xml_str
+
+    def is_set(self):
+        if self.plan:
+            return True
+        return False
 
     def __str__(self):
         return self.get_plan_as_xml_str()
@@ -41,11 +45,11 @@ class Plan:
 
     def __setitem__(self, index, value):
         self.plan[index] = value
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
+        self.agent_system.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def __delitem__(self, index):
         del self.plan[index]
-        self.agent.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
+        self.agent_system.add_context_data("Plan", self, "Plan Steps", importance=0, always_display=True)
 
     def is_done(self):
         return self.current_step >= len(self.plan)

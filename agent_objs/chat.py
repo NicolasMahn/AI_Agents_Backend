@@ -1,8 +1,5 @@
 import os
 import sys
-import time
-from typing import Optional, Any
-
 from typing_extensions import override
 
 import config
@@ -10,13 +7,32 @@ import util
 from llm_functions import count_context_length
 from util.colors import PINK, RESET
 
+_message_callback = None
+
+def register_message_callback(callback_func):
+    """Registers a function to be called when a message needs to be sent."""
+    global _message_callback
+    _message_callback = callback_func
+
+def _notify(message):
+    """Internal helper to safely call the registered callback."""
+    if _message_callback:
+        try:
+            _message_callback(message, "chat_update")
+        except Exception as e:
+            print(f"Error in message callback: {e}")
+    else:
+        print(f"Message notification attempted, but no callback registered: {message}")
+
 
 class Chat(list):
 
-    def __init__(self, chat_name: str = None, chat_dir: str = "projects"):
+    def __init__(self, chat_name: str = None, agent_system_name:str = "Unknown", chat_dir: str = "projects"):
         self.chat_name = chat_name
+        self.agent_system_name = agent_system_name
         self.chat_file = os.path.join(chat_dir, f"{chat_name}.json")
         super().__init__(self.restore_chat_history())
+        util.save_json(self.chat_file, self)
         pass
 
     def __str__(self):
@@ -35,11 +51,13 @@ class Chat(list):
         pass
 
     def append_message(self, sender, text):
-        self.append({"sender": sender, "text": text})
+        self.add_message(sender, text)
 
     def add_message(self, sender, text):
-        print(f"Adding message to {self.chat_name} by {sender}")
+        print(f"Adding message to `{self.chat_name}` by `{sender}`")
         self.append({"sender": sender, "text": text})
+        _notify(f"Adding message to `{self.chat_name}` of `{self.agent_system_name}`")
+
 
     def append(self, item):
         super().append(item)

@@ -1,33 +1,44 @@
 import shutil
 
 import config
-from agents import Agent
+from agent_systems.llm_wrapper_system import LLMWrapperSystem
+from agent_systems.planning_agent_system import PlanningAgentSystem
+from agent_systems.reviewing_agent_system import ReviewingAgentSystem, ReviewingAgentSystemWithLesserCritic
+from agent_systems.reviewing_planning_agent_system import ReviewingPlanningAgentSystem
+from agent_systems.simple_agent_system import SimpleAgentSystem
 from agents.planning_agent import PlanningAgent
-from agents.reviewing_agent import ReviewingAgent
-from agents.reviewing_planning_agent import ReviewingPlanningAgent
 
-agents = [
-    Agent("Agent"),
-    ReviewingAgent("Review Agent"),
-    PlanningAgent("Planning Agent"),
-    ReviewingPlanningAgent("Reviewing Planning Agent"),
+agent_systems = [
+    LLMWrapperSystem(),
+    SimpleAgentSystem(),
+    ReviewingAgentSystem(),
+    ReviewingAgentSystemWithLesserCritic(),
+    ReviewingPlanningAgentSystem(),
+    ReviewingAgentSystemWithLesserCritic(),
+    PlanningAgentSystem(),
 ]
 
 def get_agents():
-    return [str(agent) for agent in agents]
+    return [str(agent) for agent in agent_systems]
 
-def get_agent(agent_name: str):
-    for agent in agents:
+def get_agent(agent_system_name: str):
+    for agent_system in agent_systems:
+        if str(agent_system) == agent_system_name:
+            return agent_system
+    return None
+
+def get_agent_description(agent_name: str):
+    for agent in agent_systems:
         if str(agent) == agent_name:
-            return agent
+            return agent.description
     return None
 
 def replace_agent(agent_obj, agent_name: str):
-    for agent in agents:
+    for agent in agent_systems:
         if str(agent) == agent_name:
-            agents.remove(agent)
+            agent_systems.remove(agent)
             break
-    agents.append(agent_obj)
+    agent_systems.append(agent_obj)
 
 def get_available_models():
     models = list(config.llm_names.keys())
@@ -49,13 +60,11 @@ def set_model(model_name):
 def get_model():
     return next((k for k, v in config.llm_names.items() if v == config.selected_model), None)
 
-def agent_reset(agent_name: str):
-    agent = get_agent(agent_name)
-    if agent:
-        type_ = type(agent)
-        shutil.rmtree(agent.agent_dir, ignore_errors=True)
-        del agent
-        agent = type_(agent_name)
-        replace_agent(agent, agent_name)
+def agent_reset(agent_system_name: str):
+    agent_system = get_agent(agent_system_name)
+    print(agent_system)
+    if agent_system:
+        shutil.rmtree(agent_system.agent_system_dir, ignore_errors=True)
+        agent_system.reset()
         return True
     return False

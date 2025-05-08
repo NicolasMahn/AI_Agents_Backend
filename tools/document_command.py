@@ -1,10 +1,8 @@
 import os
-import xml.etree.ElementTree as ET
 import pandas as pd
 import json
 import yaml
 from io import StringIO
-import pprint # For potentially pretty-printing json/yaml
 
 from PIL import Image
 # Import pdfminer for PDF text extraction
@@ -13,7 +11,7 @@ from pdfminer.pdfparser import PDFSyntaxError
 
 from config import max_generic_content_length
 from llm_functions import count_context_length
-from llm_functions.llm_api_wrapper import get_image_description_gemini
+from llm_functions.llm_api_wrapper import get_image_description
 
 
 def truncate_text_to_tokens(text: str, max_tokens: int) -> str:
@@ -261,26 +259,19 @@ def get_document_content(filepath: str) -> str:
                 # Define the prompt for the vision model
                 image_prompt = "Describe this image in detail, focusing on the main subject, setting, and any notable features or text present."
 
-                # Calculate remaining token budget for the description
-                current_report_tokens = count_context_length("\n".join(report_parts))
-                description_token_budget = max(100,
-                                               max_generic_content_length - current_report_tokens - 50)  # Ensure positive budget, leave margin
 
                 report_parts.append("### AI Generated Description:")
                 # Call the new vision function
-                description = get_image_description_gemini(
+                description = get_image_description(
                     image_path=filepath,
                     text_prompt=image_prompt
-                    # model_name="gemini-pro-vision" # Or use DEFAULT_VISION_MODEL
                 )
 
                 # Check for errors returned by the function
                 if description.startswith("Error:"):
                     report_parts.append(f"_{description}_")
                 else:
-                    # Truncate the description if it's too long for the remaining budget
-                    truncated_description = truncate_text_to_tokens(description, description_token_budget)
-                    report_parts.append(truncated_description)
+                    report_parts.append(description)
 
             except FileNotFoundError:
                 report_parts.append("**Error:** Image file seems to have disappeared after initial check.")
@@ -324,7 +315,7 @@ def get_document_content(filepath: str) -> str:
     return final_report
 
 
-def execute_document_command(command, agent):
+def execute_document_command(command, agent_system):
 
     if isinstance(command, str):
         filepath = command
@@ -334,7 +325,7 @@ def execute_document_command(command, agent):
         return "Error: Document could not be retrieved. Filepath not provided."
 
     final_report = get_document_content(filepath)
-    agent.add_context_data(f"Document Analysis Results of {os.path.basename(filepath)}", final_report,
+    agent_system.add_context_data(f"Document Analysis Results of {os.path.basename(filepath)}", final_report,
                            "Document analysis results", importance=3)
 
     return "Document analysis executed successfully."
@@ -343,10 +334,20 @@ def execute_document_command(command, agent):
 
 
 if __name__ == "__main__":
-    root_folder = "C:\\Users\\nicol\\PycharmProjects\\AI_Agents_Backend\\test_docs"
+    root_folder = os.path.abspath("../test_docs")
 
-    for doc in os.listdir(root_folder):
+    docs = os.listdir(root_folder)
+
+    for i, doc in enumerate(docs):
+        print(f"{i}. {os.path.basename(doc)}")
+    print("\n")
+    selected_doc = input("Select a document number to analyze: ")
+    print("\n\n")
+    try:
+        doc = docs[int(selected_doc)]
+
         final_report = get_document_content(os.path.join(root_folder, doc))
         print(final_report)
-
-        input("Press Enter to continue...")
+    except Exception as e:
+        print(f"Error: {e}")
+        print("Please select a valid document number.")

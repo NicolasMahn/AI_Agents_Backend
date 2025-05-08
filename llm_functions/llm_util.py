@@ -4,8 +4,7 @@ import tiktoken
 from google import genai
 
 import config
-from config import selected_model, DEBUG
-from config import max_tokens, MODEL_OWNER
+from config import max_tokens, MODEL_OWNER, DEBUG
 from scrt import GOOGLE_KEY, HUGGING_FACE_KEY
 from util.colors import PINK, RESET
 from transformers import AutoTokenizer

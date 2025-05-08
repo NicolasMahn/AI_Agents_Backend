@@ -9,10 +9,9 @@ import google
 import openai
 from PIL import Image
 from google import genai
-from google.genai import types
 from openai import OpenAI
 
-import agent_manager
+
 import config
 from llm_functions.llm_util import is_context_too_long, count_context_length
 from scrt import OPENAI_KEY, GOOGLE_KEY, LAMBDA_KEY
@@ -20,8 +19,9 @@ from scrt import OPENAI_KEY, GOOGLE_KEY, LAMBDA_KEY
 from config import DEBUG
 from util.colors import PINK, RESET, BLUE, GREEN
 
-def basic_prompt(prompt: str, role: str = "You are a helpful assistant.") -> str:
-    model = config.selected_model
+def basic_prompt(prompt: str, role: str = "You are a helpful assistant.", model=None) -> str:
+    if model is None:
+        model = config.selected_model
 
     if DEBUG:
         print(f"--------Invoking Model: {model}-------------")
@@ -413,6 +413,7 @@ if __name__ == "__main__":
     evaluation_string = "\n\nFirst Question: " + question + "\n"
     for model_name in config.llm_names.keys():
         evaluation_string += f"--------------{model_name}----------------\n"
+        import agent_manager
         agent_manager.set_model(model_name)
         response = basic_prompt(prompt.format(dynamic_content=question), role)
 

@@ -48,7 +48,7 @@ def find_available_port(host='localhost'):
 
 
 class Code:
-    def __init__(self, code: str, requirements, code_imports: list, agent,
+    def __init__(self, code: str, requirements, code_imports: list, agent_system,
                  version: str = "-", tag: str = "", frontend=False):
 
         self.code = code
@@ -65,7 +65,7 @@ class Code:
         self.version = version
         self.tag = tag
         self.dt = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-        self.agent = agent
+        self.agent_system = agent_system
         self.logs = None
         self.frontend_html = None
 
@@ -78,18 +78,18 @@ class Code:
 
         self.frontend = frontend
 
-        self.name = (f"by_agent_{agent.get_name()}_"
+        self.name = (f"by_agent_{agent_system.get_name()}_"
                      f"version_{version}_datetime_{self.dt}")
         if self.tag:
             self.name += f"_tag_{tag}"
 
-        self.code_dir = f"{self.agent.agent_dir}/code"
+        self.code_dir = f"{self.agent_system.agent_system_dir}/code"
         self.code_file_path = f"{self.code_dir}/{self.name}.py"
 
-        self.input_dir = os.path.join(self.agent.agent_dir, "uploads")
+        self.input_dir = os.path.join(self.agent_system.agent_system_dir, "uploads")
         os.makedirs(self.input_dir, exist_ok=True)
 
-        self.output_dir = os.path.join(self.agent.agent_dir, "output")
+        self.output_dir = os.path.join(self.agent_system.agent_system_dir, "output")
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.dash_evaluation = None

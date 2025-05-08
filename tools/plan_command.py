@@ -1,9 +1,9 @@
 import xml.etree.ElementTree as ET
 
 
-def execute_plan_command(command: ET, agent):
+def execute_plan_command(command: ET, agent_system):
     steps = command.findall("step")
-    agent.plan.set_plan([step.text for step in steps])
+    agent_system.plan.set_plan([step.text for step in steps])
 
     return "Plan created or updated."
 

@@ -38,7 +38,8 @@ def assign_default_value_to_attrs(attr_str: str) -> str:
         return ""
 
     # Find attributes without values and assign them a default value
-    attr_str = re.sub(r'(\w+)(\s|$)', r'\1="true"\2', attr_str)
+    attr_str = re.sub(r'(\w+)(?=\s|$)(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^\']*\'[^\']*\')*[^\']*$)', r'\1="true"',
+                      attr_str)
     return attr_str
 
 def extract_xml_elements(text: str):
@@ -55,6 +56,7 @@ def extract_xml_elements(text: str):
             try:
                 cleaned_attributes = convert_json_attributes(match[1]) if match[1] else ""
                 cleaned_attributes = assign_default_value_to_attrs(cleaned_attributes)
+
                 element_str = f'<{match[0]}{cleaned_attributes}>{match[2]}</{match[0]}>'
                 if DEBUG:
                     print("Attempting to parse:", element_str)  # Debugging output
@@ -77,16 +79,6 @@ def extract_xml_elements(text: str):
                 errors.append(f"Error parsing self-closing tag: {match}\n\n Error: {e}")
 
     return elements, errors
-
-def add_command(name: str, attributes: dict = None, text: str = None) -> ET.Element:
-    """Creates an XML element representing a command."""
-    if attributes is None:
-        command = ET.Element(name)
-    else:
-        command = ET.Element(name, attrib=attributes)
-    if text:
-        command.text = text
-    return command
 
 
 if __name__ == "__main__":
