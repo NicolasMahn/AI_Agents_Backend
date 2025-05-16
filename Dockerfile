@@ -13,13 +13,6 @@ COPY . /app
 RUN apk update && \
     apk add --no-cache \
     docker-cli \
-    gcc \
-    musl-dev \
-    python3-dev \
-    libffi-dev \
-    openssl-dev \
-    cargo \
-    build-base
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
