@@ -10,7 +10,7 @@ from agents.tinker_agent import TinkerAgent
 class ReviewingPlanningAgentSystem(BaseAgentSystem):
     def __init__(self, system_name=None, description=None, model_for_minor_agents=None):
         if system_name is None:
-            system_name="Reviewing Agent System"
+            system_name="Reviewing Planning Agent System"
         if description is None:
             description = ("An AI agent system, where an Agent sets a plan beforehand. "
                            "That two further agents work together to complete. "
@@ -132,7 +132,9 @@ class ReviewingPlanningAgentSystem(BaseAgentSystem):
 
                     entire_prompt = \
                         f"{self._prompt}\n\n---\n\n{instructions_validate_step}"
-                    if self.prompt(entire_prompt, self.critic_agent):
+                    self.prompt(entire_prompt, self.critic_agent)
+
+                    if self.critic_agent.requirements_met:
                         self.plan.next_step()
                         break
 
@@ -155,6 +157,7 @@ class ReviewingPlanningAgentSystem(BaseAgentSystem):
         self.plan = Plan(self)
 
         self.replying = False
+        self.send_socket_message(f"Prompted agent `{self.get_name()}`. Agent has replied.")
         pass
 
 class ReviewingPlanningAgentSystemWithLesserCritic(ReviewingPlanningAgentSystem):

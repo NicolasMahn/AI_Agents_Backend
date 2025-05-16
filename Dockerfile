@@ -1,63 +1,50 @@
-# Use official Docker in docker image as a parent image
-FROM docker:stable
+# Run command (needs access to host docker system): docker run -v /var/run/docker.sock:/var/run/docker.sock -p 5000:5000 image-name
 
-# Prevents Python from writing pyc files to disc
+FROM python:3.9-alpine
+
 ENV PYTHONDONTWRITEBYTECODE 1
-# Ensures Python output is sent straight to terminal without being buffered
 ENV PYTHONUNBUFFERED 1
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
+
 COPY . /app
 
-
-
-# Set non-interactive frontend and configure timezone
 RUN apk update && \
-    apk add python3
+    apk add --no-cache \
+    docker-cli \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    openssl-dev \
+    cargo \
+    build-base
 
-# install pip
-RUN python3 -m ensurepip --upgrade
-RUN python3 -m pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Install requirements
-RUN pip install -r requirements.txt
 
-# Install Playwright
 RUN pip install --no-cache-dir playwright && playwright install
 
-# Set up Hugging Face authentication
 ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
 RUN pip install --no-cache-dir huggingface_hub
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
-# Install docker
-#RUN apt-get install -y docker.io
 
-# Start the Docker daemon and build the custom-python image
-RUN dockerd & sleep 5 && docker build -f CustomPythonDockerfile -t custom-python .
-
-
-# Make port 80 available to the world outside this container
 EXPOSE 5000
 
-# Set build arguments for secrets
 ARG CHROMA_HOST
 ARG CHROMA_PORT
 ARG GOOGLE_KEY
 ARG OPENAI_KEY
 ARG LAMBDA_KEY
 
-# Set environment variables for secrets
 ENV CHROMA_HOST=${CHROMA_HOST}
 ENV CHROMA_PORT=${CHROMA_PORT}
 ENV GOOGLE_KEY=${GOOGLE_KEY}
 ENV OPENAI_KEY=${OPENAI_KEY}
 ENV LAMBDA_KEY=${LAMBDA_KEY}
 
-
-# Run the application using Gunicorn
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "main:app"]

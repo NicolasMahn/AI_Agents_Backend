@@ -41,35 +41,35 @@ llm_names = {
 
 max_tokens = {
     # Open AI
-    "o4-mini-high": 200000,
-    "o4-mini": 200000,
-    "o3-mini-high": 200000,
-    "o3-mini": 200000,
-    "gpt-4.1-mini": 1000000,
-    "gpt-4.1-nano": 1000000,
-    "gpt-4o": 128000,
-    "gpt-4o-mini": 128000,
+    "o4-mini-high": 200_000,
+    "o4-mini": 200_000,
+    "o3-mini-high": 200_000,
+    "o3-mini": 200_000,
+    "gpt-4.1-mini": 1_000_000,
+    "gpt-4.1-nano": 1_000_000,
+    "gpt-4o": 128_000,
+    "gpt-4o-mini": 128_000,
     # ---
     "text-embedding-ada-002": 8192,
     # Google
-    "gemini-2.5-pro-preview-03-25": 1000000,
-    "gemini-2.5-flash-preview-04-17": 1000000,
-    "gemini-2.0-flash": 1000000,
-    "gemini-2.0-flash-lite": 1000000,
+    "gemini-2.5-pro-preview-03-25": 1_000_000,
+    "gemini-2.5-flash-preview-04-17": 1_000_000,
+    "gemini-2.0-flash": 1_000_000,
+    "gemini-2.0-flash-lite": 1_000_000,
     # Open Source
-    "deepseek-r1-671b": 128000,
-    "deepseek-llama3.3-70b": 128000,
-    "deepseek-v3-0324": 128000,
-    "llama-4-maverick-17b-128e-instruct-fp8": 1000000,
-    "llama-4-scout-17b-16e-instruct": 10000000,
-    "llama3.3-70b-instruct-fp8": 128000,
-    "llama3.1-405b-instruct-fp8": 128000,
-    "llama3.1-nemotron-70b-instruct-fp8": 128000,
-    "llama3.1-70b-instruct-fp8": 128000,
-    "llama3.1-8b-instruct": 128000,
-    "llama3.2-3b-instruct": 128000,
-    "lfm-40b": 66000,
-    "qwen25-coder-32b-instruct": 32000,
+    "deepseek-r1-671b": 128_000,
+    "deepseek-llama3.3-70b": 128_000,
+    "deepseek-v3-0324": 128_000,
+    "llama-4-maverick-17b-128e-instruct-fp8": 1_000_000,
+    "llama-4-scout-17b-16e-instruct": 10_000_000,
+    "llama3.3-70b-instruct-fp8": 128_000,
+    "llama3.1-405b-instruct-fp8": 128_000,
+    "llama3.1-nemotron-70b-instruct-fp8": 128_000,
+    "llama3.1-70b-instruct-fp8": 128_000,
+    "llama3.1-8b-instruct": 128_000,
+    "llama3.2-3b-instruct": 128_000,
+    "lfm-40b": 66_000,
+    "qwen25-coder-32b-instruct": 32_000,
 }
 
 
@@ -89,11 +89,14 @@ MODEL_OWNER = {
                "qwen25-coder-32b-instruct"],
 }
 
-max_prompt_tokens = 10000
-max_instructions_size = 10000
-max_generic_content_length = 10000
+max_prompt_tokens = 10_000
+max_instructions_size = 10_000
+max_generic_content_length = 10_000
 max_context_tokens = max_tokens[selected_model] - max_instructions_size - max_prompt_tokens
 max_chat_tokens = 4 * max_generic_content_length
+
+top_k = 3
+long_memory_display = True
 
 RAG_CHUNK_SIZE = 8192
 

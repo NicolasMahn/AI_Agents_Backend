@@ -3,17 +3,14 @@ import base64
 import io
 import os
 import time
-from http.client import responses
-
 import google
 import openai
 from PIL import Image
 from google import genai
 from openai import OpenAI
 
-
 import config
-from llm_functions.llm_util import is_context_too_long, count_context_length
+from llm_functions.llm_util import is_context_too_long
 from scrt import OPENAI_KEY, GOOGLE_KEY, LAMBDA_KEY
 
 from config import DEBUG
@@ -67,7 +64,6 @@ def _basic_prompt_lambda(prompt: str, role: str, model: str) -> str:
         ],
         model = model
     )
-    print(f"Response: {response_text}")
     return response_text.choices[0].message.content
 
 

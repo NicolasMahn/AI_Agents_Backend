@@ -1,6 +1,5 @@
 import xml.etree.ElementTree as ET
 
-import api
 from agent_objs.code import Code
 from config import DEBUG
 from util.colors import WHITE, GREEN, RESET
@@ -54,6 +53,4 @@ def execute_code_command(command: ET, agent_system):
 
     agent_system.add_context_data("Code Results", code_obj.get_results_xml(), "Results from Code Execution",
                                   importance = 1)
-
-    api.send_message(f"Agent {agent_system.name} just executed code")
     return "Code execution completed"

@@ -1,11 +1,12 @@
+import datetime
 import os
 import threading
-import time
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 from flask import Flask, jsonify, request, send_file
 
 import agent_manager
 from agent_objs import chat, code_manager
+from agent_systems import base_agent_system, llm_wrapper_system
 from util import decode_url_str
 app = Flask(__name__)
 socketio = SocketIO(app, logger=True, engineio_logger=True,  async_mode='threading', cors_allowed_origins="*") # Initialize SocketIO with Flask
@@ -21,7 +22,7 @@ def handle_disconnect():
 
 def send_message(message, event="message"):
     try:
-        socketio.emit(event, message, namespace='/')
+        socketio.emit(event, message + " - " + str(datetime.datetime.now().timestamp()), namespace='/')
     except Exception as e:
         print(f"Error emitting SocketIO message: {e}")
 
@@ -149,6 +150,37 @@ def set_model(model):
 def get_model():
     return jsonify(agent_manager.get_model())
 
+@app.route('/get_top_k', methods=['GET'])
+def get_top_k():
+    return jsonify(agent_manager.get_top_k())
+
+@app.route('/set_top_k/<int:k>', methods=['POST'])
+def set_top_k(k):
+    if agent_manager.set_top_k(k):
+        print(f'Set Top K to `{k}`')
+        send_message(f'Top K is set.', "top_k_switch")
+        return jsonify({'message': f'Top K set to `{k}`'})
+    else:
+        print(f'Invalid Top K value `{k}`')
+        send_message("Failed to set Top K.", "top_k_switch")
+        return jsonify({'error': f'Invalid Top K value `{k}`'}), 400
+
+@app.route('/get_long_memory_display', methods=['GET'])
+def get_long_memory_display():
+    return jsonify(agent_manager.get_long_memory_display())
+
+@app.route('/set_long_memory_display/<long_memory_display>', methods=['POST'])
+def set_long_memory_display(long_memory_display):
+    if long_memory_display in ['True', 'False']:
+        agent_manager.set_long_memory_display(long_memory_display)
+        print(f'Set Long Memory Display to `{long_memory_display}`')
+        send_message(f'Long Memory Display is set.', "long_memory_switch")
+        return jsonify({'message': f'Long Memory Display set to `{long_memory_display}`'})
+    else:
+        print(f'Invalid Long Memory Display value `{long_memory_display}`')
+        send_message("Failed to set Long Memory Display.", "long_memory_switch")
+        return jsonify({'error': f'Invalid Long Memory Display value `{long_memory_display}`'}), 400
+
 @app.route('/get_file/<path:file_path>', methods=['GET'])
 def get_file(file_path):
     try:
@@ -159,36 +191,10 @@ def get_file(file_path):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# --- api calls intended specifically for DataSciBench
-
-@app.route('/<url_agent_name>/prompt_for_bench/', methods=['POST'])
-def prompt_for_bench(url_agent_name):
-    data = request.get_json()
-    if not data or not isinstance(data, dict):
-        return jsonify({'error': 'Invalid input'}), 400
-    try:
-        agent_name = decode_url_str(url_agent_name)
-        agent = agent_manager.get_agent(agent_name)
-        if agent:
-            agent.add_message(data['sender'], data['text'])
-            while agent.replying:
-                time.sleep(0.1)
-
-            if 0 == len(agent.get_code_names()):
-                return jsonify(agent.get_reply()) # Deprecated, needs fix
-
-            code_name = agent.get_code_names()[-1]
-            return jsonify(str(agent.get_reply()) + "\n---\n```python\n" + agent.get_code_script(code_name) + "\n```")
-
-
-        else:
-            return jsonify({'error': f'Agent `{agent_name}` not found'}), 404
-    except KeyError as e:
-        return jsonify({'error': f'Missing key: {e}'}), 400
-
 chat.register_message_callback(send_message)
 code_manager.register_message_callback(send_message)
+base_agent_system.register_message_callback(send_message)
+llm_wrapper_system.register_message_callback(send_message)
 
 if __name__ == '__main__':
     app.run(debug=False)

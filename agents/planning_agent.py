@@ -9,10 +9,7 @@ class PlanningAgent(BaseAgent):
                 "Your handle in the chat is `Planning Agent`. \n")
         chroma_collection = "python"
         super().__init__(system, agent_name, role, chroma_collection)
-        self.command_instructions["response"]["active"] = False
         self.command_instructions["code"]["active"] = False
-        self.command_instructions["query"]["active"] = False
-        self.command_instructions["document"]["active"] = False
         self.add_custom_command_instructions(
             name="plan",
             instructions=("## **Planning**\n"

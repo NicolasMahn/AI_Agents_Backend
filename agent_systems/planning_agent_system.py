@@ -9,13 +9,19 @@ from agents.summarizing_agent import SummarizingAgent
 
 class PlanningAgentSystem(BaseAgentSystem):
     def __init__(self):
-        system_name="Reviewing Agent System"
+        system_name="Planning Agent System"
         description = ("An AI agent system, where an Agent sets a plan beforehand. "
                        "That two further agents work together to complete. "
                        "One agent solves the users requests, "
                        "and another agent verifies the completeness of the first agent.\n")
         self.planning_agent = PlanningAgent(self)
         self.agent = Agent(self)
+        self.agent.add_custom_command_instructions(
+            name="## **Next Step**:\n",
+            instructions=("You are executing your plan step-by-step.\n\n"
+                          "To go to the next step, you must include the `<next_step />` command at the end of your response.\n"
+                          "Only go to the next step if you are sure that the current step is complete.\n")
+        )
         self.summarizing_agent = SummarizingAgent(self)
         agents = [self.planning_agent, self.agent, self.summarizing_agent]
         super().__init__(system_name, description, agents)
@@ -90,4 +96,5 @@ class PlanningAgentSystem(BaseAgentSystem):
             self.prompt(entire_prompt, self.summarizing_agent)
             i += 1
         self.replying = False
+        self.send_socket_message(f"Prompted agent `{self.get_name()}`. Agent has replied.")
         pass

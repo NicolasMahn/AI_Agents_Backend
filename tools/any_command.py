@@ -1,4 +1,3 @@
-from typing import Tuple, Any
 import xml.etree.ElementTree as ET
 
 
@@ -6,9 +5,6 @@ import xml.etree.ElementTree as ET
 def execute_commands(commands: list[ET], agent, agent_system) -> dict[str: str]:
     responses = {}
     for command in commands:
-        if agent.no_consecutive_messages and command.tag in ["document", "query", "search", "code"]:
-            responses[command.tag] = "Commands that take execution time are not allowed. reply to the User!"
-            continue
         response = execute_command(command, agent, agent_system)
         responses[command.tag] =  response
 

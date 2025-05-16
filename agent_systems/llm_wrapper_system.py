@@ -1,21 +1,29 @@
 import base64
-import itertools
 import os
 
 import numpy as np
-
-import rag
-import util
 import config
 
-from tools import command_util
 from llm_functions import count_context_length, basic_prompt
-from tools import execute_commands, execute_document_command
+from tools.document_command import execute_document_command
 from agent_objs.chat import Chat
-from rag import query_rag
 from util import delete_directory_with_content
 from util.colors import ORANGE, RESET, RED, PINK
 
+def register_message_callback(callback_func):
+    """Registers a function to be called when a message needs to be sent."""
+    global _message_callback
+    _message_callback = callback_func
+
+def _notify(message):
+    """Internal helper to safely call the registered callback."""
+    if _message_callback:
+        try:
+            _message_callback(message, "agent_update")
+        except Exception as e:
+            print(f"Error in message callback: {e}")
+    else:
+        print(f"Message notification attempted, but no callback registered: {message}")
 
 class LLMWrapperSystem:
     def __init__(self):
@@ -112,6 +120,7 @@ class LLMWrapperSystem:
         self.prompt(entire_prompt)
 
         self.replying = False
+        _notify(f"Prompting agent `{agent.get_name()}` is done with prompt: {self._prompt}")
         pass
 
     def prompt(self, prompt):

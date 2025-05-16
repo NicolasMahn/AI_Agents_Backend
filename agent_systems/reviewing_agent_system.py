@@ -16,6 +16,7 @@ class ReviewingAgentSystem(BaseAgentSystem):
         self.tinker_agent = TinkerAgent(self)
         self.critic_agent = CriticAgent(self, model=model_for_minor_agents)
         self.summarizing_agent = SummarizingAgent(self, model=model_for_minor_agents)
+        self.max_summarizing_iterations = 2
         agents=[self.tinker_agent, self.critic_agent, self.summarizing_agent]
         super().__init__(system_name, description, agents)
 
@@ -73,11 +74,14 @@ class ReviewingAgentSystem(BaseAgentSystem):
 
             i += 1
             print(f"{RED}Warning: Maximum iterations reached. Stopping prompt agent.{RESET}")
-            self.chat.add_message("Warning", "Maximum iterations reached. Summarizing, current state of completeness.")
-            self.complete_chat.add_message("Warning", "Maximum iterations reached. Summarizing, current state of completeness.")
-            self.clean_chat.add_message("System", "Maximum iterations reached. Summarizing, current state of completeness.")
 
-        while self.clean_chat.get_last_sender() != self.summarizing_agent.get_name():
+            if i == self.max_iterations:
+                self.chat.add_message("Warning", "Maximum iterations reached. Summarizing, current state of completeness.")
+                self.complete_chat.add_message("Warning", "Maximum iterations reached. Summarizing, current state of completeness.")
+                self.clean_chat.add_message("System", "Maximum iterations reached. Summarizing, current state of completeness.")
+                break
+
+        while self.clean_chat.get_last_sender() != self.summarizing_agent.get_name() and i < self.max_iterations+self.max_summarizing_iterations:
             print(f"Executing final prompt ({i + 1})")
 
             instructions = (
@@ -96,10 +100,11 @@ class ReviewingAgentSystem(BaseAgentSystem):
             entire_prompt = \
                 f"{self._prompt}\n\n---\n\n{instructions}"
 
-            self.prompt(entire_prompt, self.summarizing_agent)
+            self.prompt(entire_prompt, self.summarizing_agent, print_thinking=i >= self.max_iterations+self.max_summarizing_iterations)
             i += 1
 
         self.replying = False
+        self.send_socket_message(f"Prompted agent `{self.get_name()}`. Agent has replied.")
         pass
 
 

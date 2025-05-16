@@ -4,9 +4,9 @@ import config
 from agent_systems.llm_wrapper_system import LLMWrapperSystem
 from agent_systems.planning_agent_system import PlanningAgentSystem
 from agent_systems.reviewing_agent_system import ReviewingAgentSystem, ReviewingAgentSystemWithLesserCritic
-from agent_systems.reviewing_planning_agent_system import ReviewingPlanningAgentSystem
+from agent_systems.reviewing_planning_agent_system import ReviewingPlanningAgentSystem, \
+    ReviewingPlanningAgentSystemWithLesserCritic
 from agent_systems.simple_agent_system import SimpleAgentSystem
-from agents.planning_agent import PlanningAgent
 
 agent_systems = [
     LLMWrapperSystem(),
@@ -14,7 +14,7 @@ agent_systems = [
     ReviewingAgentSystem(),
     ReviewingAgentSystemWithLesserCritic(),
     ReviewingPlanningAgentSystem(),
-    ReviewingAgentSystemWithLesserCritic(),
+    ReviewingPlanningAgentSystemWithLesserCritic(),
     PlanningAgentSystem(),
 ]
 
@@ -68,3 +68,24 @@ def agent_reset(agent_system_name: str):
         agent_system.reset()
         return True
     return False
+
+def get_top_k():
+    return config.top_k
+
+def set_top_k(k):
+    try:
+        config.top_k = int(k)
+        print(f'Set Top K to `{k}`')
+        return True
+    except Exception as e:
+        print(f"Invalid Top K value: {k}. Error: {e}")
+        return False
+
+def get_long_memory_display():
+    return config.long_memory_display
+
+def set_long_memory_display(display):
+    if display == "True":
+        config.long_memory_display = True
+    elif display == "False":
+        config.long_memory_display = False

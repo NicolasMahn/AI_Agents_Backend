@@ -29,7 +29,8 @@ def main():
 
     parser.add_argument("--query_text", type=str, help="The query text.")
     parser.add_argument("--debug", action="store_true", help="Additional print statements")
-    parser.add_argument("--collection",  help="Select the chroma collection.")
+    parser.add_argument("--collection", default="python", help="Select the chroma collection.")
+    parser.add_argument("--n_results", type=int, default=20, help="Number of results to retrieve initially.")
     args = parser.parse_args()
     if args.debug:
         print(f"{ORANGE}⭕  DEBUG Mode Active{RESET}")
@@ -46,14 +47,18 @@ def main():
     else:
         collection = args.collection
 
-    response_text, _, _ = query_rag_with_llm_response(query_text, collection)
+    n_results = args.n_results
+
+    response_text, _, _ = query_rag_with_llm_response(query_text, collection,
+                                                      n_results=n_results)
 
     print(f"{WHITE}{response_text}{RESET}")
     print()
 
 
 def query_rag_with_llm_response(query_text: str, chroma_collection: str, unique_role: str=None,
-                                unique_prompt_template: str=None, n_results: int = 20):
+                                unique_prompt_template: str=None,
+                                n_results: int = 20):
 
     results = query_rag(query_text, chroma_collection, n_results=n_results)
     if isinstance(results, str):
@@ -84,7 +89,7 @@ def query_rag_with_llm_response(query_text: str, chroma_collection: str, unique_
     prompt = prompt_template.format(context=context_text, question=query_text)
 
     role = "Provide accurate and concise answers based solely on the given context." if not unique_role else unique_role
-    response_text = llm_api_wrapper.basic_prompt(prompt, role=role, temperature= 0.2, model="default")
+    response_text = llm_api_wrapper.basic_prompt(prompt, role=role, model="default")
 
     return response_text, context_text, metadatas
 

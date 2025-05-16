@@ -28,6 +28,6 @@ def execute_query_command(command: ET, agent_system) -> str:
         response_text += f"Please reference the source in your answer.\n"
 
 
-    agent_system.add_context_data(f"{query_type} Query Results", response_text, "Query results", importance=3)
+    agent_system.add_context_data(f"{query_type.capitalize()} Query Results", response_text, "Query results", importance=3)
 
     return "Query executed successfully."

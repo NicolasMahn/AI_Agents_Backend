@@ -2,7 +2,6 @@ import base64
 import os
 
 import numpy as np
-from pygments.lexer import default
 
 import rag
 import util
@@ -10,14 +9,28 @@ import config
 from agent_objs.code_manager import CodeManager
 
 from tools import command_util
-from llm_functions import count_context_length, basic_prompt
-from tools import execute_commands, execute_document_command
+from llm_functions import count_context_length
+from tools import execute_commands
+from tools.document_command import execute_document_command
 from agent_objs.chat import Chat
 from rag import query_rag
 
 from util.colors import ORANGE, RESET, RED, PINK
 
+def register_message_callback(callback_func):
+    """Registers a function to be called when a message needs to be sent."""
+    global _message_callback
+    _message_callback = callback_func
 
+def _notify(message):
+    """Internal helper to safely call the registered callback."""
+    if _message_callback:
+        try:
+            _message_callback(message, "agent_update")
+        except Exception as e:
+            print(f"Error in message callback: {e}")
+    else:
+        print(f"Message notification attempted, but no callback registered: {message}")
 
 class BaseAgentSystem:
     def __init__(self, system_name, description, agents, default_agent=None):
@@ -167,14 +180,27 @@ class BaseAgentSystem:
             self.clean_chat.add_message("System", "Maximum iterations reached. Stopping prompt agent.")
 
         self.replying = False
+        self.send_socket_message(f"Prompted agent `{self.get_name()}`. Agent has replied.")
         pass
 
-    def prompt(self, prompt, agent=None):
+    def send_socket_message(self, message):
+        """Sends a message to the socket."""
+        if _message_callback:
+            try:
+                _message_callback(message, "agent_update")
+            except Exception as e:
+                print(f"Error in message callback: {e}")
+        else:
+            print(f"Message notification attempted, but no callback registered: {message}")
+
+    def prompt(self, prompt, agent=None, print_thinking=False):
         if not agent:
             agent = self.default_agent
         self.acting_agent = agent
 
         response, prompt = agent.prompt(prompt)
+        if print_thinking:
+            self.clean_chat.add_message(agent.get_name(), response)
         self.complete_chat.add_message("Prompt", prompt)
         self.chat.add_message(agent.get_name(), response)
         self.complete_chat.add_message(agent.get_name(), response)
@@ -208,6 +234,9 @@ class BaseAgentSystem:
             if callable(value):
                 value = value()
             description_ = context_item["description"]
+
+            if (name == "Long-Term Memory" or name == "Memory Query Results") and not config.long_memory_display:
+                continue
 
             if name == "Context Dump" and not status_info:
                 context_item_str = f"# **{name}**:\n"
@@ -269,8 +298,16 @@ class BaseAgentSystem:
         context_xml_str += "The context is sorted by relevance. Reference the context source you used in the user response.\n"
 
         n_results = int(config.max_context_tokens / config.RAG_CHUNK_SIZE * 10)
+        if config.top_k < n_results:
+            n_results = config.top_k
+
+        if config.DEBUG:
+            print(f"Querying context with n_results/top_k: {n_results}")
+
+        if n_results == 0:
+            return "<context> </context>"
         context_dict = query_rag(f"{self._prompt}\n---\n{self._tmp_context_data_str}", agent.chroma_collection,
-                                 n_results)
+                                 n_results=n_results)
         if isinstance(context_dict, list) or isinstance(context_dict, dict):
             context_xml_str += self.convert_query_results_to_xml_schema(context_dict, max_length=max_length,
                                                                         root_name="context")
