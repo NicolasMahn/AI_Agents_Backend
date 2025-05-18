@@ -36,4 +36,5 @@ ENV GOOGLE_KEY=${GOOGLE_KEY}
 ENV OPENAI_KEY=${OPENAI_KEY}
 ENV LAMBDA_KEY=${LAMBDA_KEY}
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "main:app"]
+# Ändere den CMD-Befehl
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "-b", "0.0.0.0:5000", "main:app"]
