@@ -94,30 +94,39 @@ def query_rag_with_llm_response(query_text: str, chroma_collection: str, unique_
     return response_text, context_text, metadatas
 
 def query_rag(query_text: str, chroma_collection: str, n_results: int = 3, _retry=0):
+    added_error_context = "Fail at query_rag() - immediately"
     try:
+        added_error_context = "Fail at query_rag() -while defining chroma_client"
         # Prepare the DB.
         chroma_client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
 
+        added_error_context = "Fail at query_rag() - while creating or getting the collection"
         # Create or get the test collection
         collection = chroma_client.get_or_create_collection(name=chroma_collection, embedding_function=openai_ef)
 
+        added_error_context = "Fail at query_rag() - in remove_excess_query_length()"
         query_text = remove_excess_query_length(query_text)
 
+        added_error_context = "Fail at query_rag() - while counting the collection size"
         collection_size = collection.count()
+        added_error_context = "Fail at query_rag() - after checking the collection size"
         if collection_size == 0:
+
             print(f"{WHITE}🔍  WARNING: The collection is empty. Please add documents before querying.{RESET}")
             return []
 
-        elif n_results > collection.count():
+        elif n_results > collection_size:
+            added_error_context = "Fail at query_rag() - while getting the results"
             results = collection.get(limit=n_results)
             return results
-
-        # Search the DB.
-        results = collection.query(
-            query_texts=[query_text],  # Chroma will embed this for you
-            n_results=n_results  # how many results to return
-        )
-        return results
+        else:
+            added_error_context = "Fail at query_rag() - while querying the results"
+            # Search the DB.
+            results = collection.query(
+                query_texts=[query_text],  # Chroma will embed this for you
+                n_results=n_results  # how many results to return
+            )
+            return results
     except httpx.ReadError as e:
         if _retry < 3:
             print(f"{PINK}🔍  Retrying query due to ReadError: {e}{RESET}")
@@ -126,7 +135,7 @@ def query_rag(query_text: str, chroma_collection: str, n_results: int = 3, _retr
             print(f"{PINK}🔍  Failed to query after 3 retries: {e}{RESET}")
             return f"Failed to query after 3 retries: {e}"
     except Exception as e:
-        print(f"{PINK}🔍  An error occurred: {e}{RESET}")
+        print(f"{PINK}🔍  An error occurred: {e} \n {added_error_context}{RESET}")
         return "Error: " + str(e)
 
 def remove_excess_query_length(query_text):
