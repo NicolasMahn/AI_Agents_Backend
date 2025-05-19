@@ -7,7 +7,7 @@ from config import DEBUG, max_tokens
 from scrt import CHROMADB_HOST, CHROMADB_PORT
 import chromadb
 
-from util.colors import ORANGE, RESET, WHITE, PINK
+from util.colors import ORANGE, RESET, WHITE, PINK, RED
 from .embedding_function import openai_ef
 
 from llm_functions import llm_api_wrapper, count_context_length
@@ -132,10 +132,10 @@ def query_rag(query_text: str, chroma_collection: str, n_results: int = 3, _retr
             print(f"{PINK}🔍  Retrying query due to ReadError: {e}{RESET}")
             return query_rag(query_text, chroma_collection, n_results, _retry + 1)
         else:
-            print(f"{PINK}🔍  Failed to query after 3 retries: {e}{RESET}")
+            print(f"{RED}🔍  Failed to query after 3 retries: {e}{RESET}")
             return f"Failed to query after 3 retries: {e}"
     except Exception as e:
-        print(f"{PINK}🔍  An error occurred: {e} TEST \n{RESET}")
+        print(f"{RED}🔍  An error occurred: {e} TEST \n{RESET}")
         return "Error: " + str(e)
 
 def remove_excess_query_length(query_text):
