@@ -9,7 +9,9 @@ from agent_objs import chat, code_manager
 from agent_systems import base_agent_system, llm_wrapper_system
 from util import decode_url_str
 app = Flask(__name__)
-socketio = SocketIO(app, logger=True, engineio_logger=True,  async_mode='threading', cors_allowed_origins="*") # Initialize SocketIO with Flask
+socketio = SocketIO(app, logger=True, engineio_logger=True,
+                    async_mode='eventlet',
+                    cors_allowed_origins="*") # Initialize SocketIO with Flask
 
 @socketio.on('connect')
 def handle_connect():
