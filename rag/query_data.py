@@ -135,7 +135,7 @@ def query_rag(query_text: str, chroma_collection: str, n_results: int = 3, _retr
             print(f"{PINK}🔍  Failed to query after 3 retries: {e}{RESET}")
             return f"Failed to query after 3 retries: {e}"
     except Exception as e:
-        print(f"{PINK}🔍  An error occurred: {e} \n {added_error_context}{RESET}")
+        print(f"{PINK}🔍  An error occurred: {e} TEST \n{RESET}")
         return "Error: " + str(e)
 
 def remove_excess_query_length(query_text):
