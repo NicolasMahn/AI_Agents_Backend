@@ -32,9 +32,9 @@ class LLMWrapperSystem:
         self.description = "This is an LLM wrapper to compare the Agents to (while implementing the absolute minimum of features). \n",
 
         self.relative_agent_dir = f"agent_files/{self.technical_name}"
-        self.agent_dir = os.path.abspath(self.relative_agent_dir)
+        self.agent_system_dir = os.path.abspath(self.relative_agent_dir)
 
-        self.chat = Chat("Clean Chat", self.system_name, self.agent_dir)
+        self.chat = Chat("Clean Chat", self.system_name, self.agent_system_dir)
         self.code_list = []
 
         self.context_data = self.get_default_context_data()
@@ -45,7 +45,7 @@ class LLMWrapperSystem:
         pass
 
     def reset(self):
-        self.chat = Chat("Clean Chat", self.system_name, self.agent_dir)
+        self.chat = Chat("Clean Chat", self.system_name, self.agent_system_dir)
         self.code_list = []
         self.context_data = self.get_default_context_data()
         delete_directory_with_content(self.relative_agent_dir)
@@ -120,7 +120,7 @@ class LLMWrapperSystem:
         self.prompt(entire_prompt)
 
         self.replying = False
-        _notify(f"Prompting agent `{agent.get_name()}` is done with prompt: {self._prompt}")
+        _notify(f"Prompting agent `{self.get_name()}` is done with prompt")
         pass
 
     def prompt(self, prompt):
