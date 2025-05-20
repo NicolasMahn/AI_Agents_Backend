@@ -25,6 +25,8 @@ MEM_LIMIT = "1025m"
 TIMEOUT = 50
 CPU_QUOTA = 100000
 
+CUSTOM_PYTHON_DOCKERFILE = os.getenv("CUSTOM_PYTHON_DOCKERFILE", "custom-python")
+
 def find_available_port(host='localhost'):
     """
     Finds and reserves an available port by binding to port 0.
@@ -178,7 +180,7 @@ if __name__ == '__main__':
                     volumes[main_path] = {"bind": "/code/main.py", "mode": "rw"}
 
                     container = client.containers.run(
-                        "custom-python",  # Ensure this image is built from your CustomPythonDockerfile.
+                        CUSTOM_PYTHON_DOCKERFILE,  # Ensure this image is built from your CustomPythonDockerfile.
                         command=command,
                         volumes=volumes,
                         network_disabled=False,
@@ -193,7 +195,7 @@ if __name__ == '__main__':
                     # container.wait(timeout=TIMEOUT*100)
                 else:
                     container = client.containers.run(
-                        "custom-python",  # Ensure this image is built from your CustomPythonDockerfile.
+                        CUSTOM_PYTHON_DOCKERFILE,  # Ensure this image is built from your CustomPythonDockerfile.
                         command=command,
                         volumes=volumes,
                         network_disabled=False,
