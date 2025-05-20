@@ -26,6 +26,7 @@ TIMEOUT = 50
 CPU_QUOTA = 100000
 
 CUSTOM_PYTHON_DOCKERFILE = os.getenv("CUSTOM_PYTHON_DOCKERFILE", "custom-python")
+D_IN_D = os.getenv("D_IN_D", "dind")
 
 def find_available_port(host='localhost'):
     """
@@ -149,18 +150,20 @@ if __name__ == '__main__':
                     f.write(execution_code)
                 start_command = "python /code/agent_code.py"
 
-                print(f"{RED}code_path: {code_path}{RESET}")
-                print(f"{RED}input_dir: {self.input_dir}{RESET}")
-                print(f"{RED}output_dir: {self.output_dir}{RESET}")
+                if D_IN_D:
+                    # Use Docker-in-Docker (DinD) for the container.
+                    input_dir_index = self.input_dir.index("agent_files")
+                    input_dir = self.input_dir[input_dir_index:]
+                    output_dir_index = self.output_dir.index("agent_files")
+                    output_dir = self.output_dir[output_dir_index:]
 
-                start_index = self.input_dir.index("agent_files")
-                result = self.input_dir[start_index:]
-
-                print(f"{RED}test dir: {result}{RESET}")
-
-                volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
-                           self.input_dir: {"bind": "/code/uploads/", "mode": "rw"},
-                           self.output_dir: {"bind": "/code/output/", "mode": "rw"}}
+                    volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
+                               input_dir: {"bind": "/code/uploads/", "mode": "rw"},
+                               output_dir: {"bind": "/code/output/", "mode": "rw"}}
+                else:
+                    volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
+                               self.input_dir: {"bind": "/code/uploads/", "mode": "rw"},
+                               self.output_dir: {"bind": "/code/output/", "mode": "rw"}}
 
                 if DEBUG:
                     for file in os.listdir(self.input_dir):
