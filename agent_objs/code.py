@@ -153,9 +153,9 @@ if __name__ == '__main__':
                 if D_IN_D:
                     # Use Docker-in-Docker (DinD) for the container.
                     input_dir_index = self.input_dir.index("agent_files")
-                    input_dir = self.input_dir[input_dir_index:]
+                    input_dir = self.input_dir[input_dir_index-1:]
                     output_dir_index = self.output_dir.index("agent_files")
-                    output_dir = self.output_dir[output_dir_index:]
+                    output_dir = self.output_dir[output_dir_index-1:]
 
                     volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
                                input_dir: {"bind": "/code/uploads/", "mode": "rw"},
