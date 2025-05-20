@@ -26,7 +26,7 @@ TIMEOUT = 50
 CPU_QUOTA = 100000
 
 CUSTOM_PYTHON_DOCKERFILE = os.getenv("CUSTOM_PYTHON_DOCKERFILE", "custom-python")
-D_IN_D = os.getenv("D_IN_D", "dind")
+D_IN_D = os.getenv("D_IN_D", False)
 
 def find_available_port(host='localhost'):
     """
