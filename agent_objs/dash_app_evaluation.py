@@ -1,3 +1,4 @@
+import os
 import time
 
 from bs4 import BeautifulSoup
@@ -5,6 +6,8 @@ import requests
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from llm_functions.llm_api_wrapper import get_image_description
+
+DASH_LINK = os.getenv("DASH_LINK", "http://localhost")
 
 TIMEOUT = 10000
 
@@ -61,7 +64,7 @@ Analyze the provided screenshot of a Dash web application. Use the accompanying 
 
 def is_dash_server_responding(port, retries=10, delay=1):
     """Checks if the server responds with a successful HTTP status code."""
-    url = f"http://127.0.0.1:{port}/"
+    url = f"{DASH_LINK}:{port}/"
     for i in range(retries):
         try:
             response = requests.get(url, timeout=5)
@@ -100,7 +103,7 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
     """
     # Playwright expects timeout in milliseconds
     playwright_timeout = TIMEOUT
-    url = f"http://localhost:{port}"  # Use localhost as Playwright runs on the host accessing the container's exposed port
+    url = f"{DASH_LINK}:{port}"  # Use localhost as Playwright runs on the host accessing the container's exposed port
 
 
     try:
