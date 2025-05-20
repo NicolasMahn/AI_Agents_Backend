@@ -7,7 +7,7 @@ import docker, tempfile, os
 from agent_objs.dash_app_evaluation import evaluate_dash_app
 from config import DEBUG
 from util import save_file
-from util.colors import WHITE, RESET, LIGHT_GREEN, PINK
+from util.colors import WHITE, RESET, LIGHT_GREEN, PINK, RED
 
 DEFAULT_REQUIREMENTS = {
     "pandas",
@@ -148,6 +148,15 @@ if __name__ == '__main__':
                 with open(code_path, "w") as f:
                     f.write(execution_code)
                 start_command = "python /code/agent_code.py"
+
+                print(f"{RED}code_path: {code_path}{RESET}")
+                print(f"{RED}input_dir: {self.input_dir}{RESET}")
+                print(f"{RED}output_dir: {self.output_dir}{RESET}")
+
+                start_index = self.input_dir.index("agent_files")
+                result = self.input_dir[start_index:]
+
+                print(f"{RED}test dir: {result}{RESET}")
 
                 volumes = {code_path: {"bind": "/code/agent_code.py", "mode": "rw"},
                            self.input_dir: {"bind": "/code/uploads/", "mode": "rw"},
