@@ -3,6 +3,7 @@ import time
 
 from bs4 import BeautifulSoup
 import requests
+from markdown_it.rules_inline import image
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from llm_functions.llm_api_wrapper import get_image_description
@@ -19,7 +20,7 @@ def evaluate_dash_app(port=8050, code_dir="screenshots"):
             return html_body # and html_body is the error message
     except Exception as e:
         return f"An error occurred while taking the screenshot or extracting the html: {e}"
-
+    print(f" {RED}Screenshot and body successfully extracted.{RESET}")
     # Get image evaluation of the screenshot
     task = f"""
 Analyze the provided screenshot of a Dash web application. Use the accompanying HTML content to aid your analysis.
@@ -59,8 +60,9 @@ Analyze the provided screenshot of a Dash web application. Use the accompanying 
 **5. Overall Assessment:**
    - Briefly summarize the apparent state of the application. Does it look functional? Are there any obvious visual glitches, layout problems, or inconsistencies (aside from potential debug errors)?
 """
-
-    return get_image_description(screenshot_path, task)
+    image_description = get_image_description(screenshot_path, task)
+    print(f"{RED} {image_description}{RESET}")
+    return image_description
 
 
 def is_dash_server_responding(port, retries=10, delay=1):
@@ -110,11 +112,9 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
 
     try:
         if is_dash_server_responding(port):
-            print(f"{RED}Server is responding on port {port}{RESET}")
             with sync_playwright() as p:
                 # Launch Chromium browser. You can also use p.firefox.launch() or p.webkit.launch()
                 # Pass necessary arguments for running in Docker/headless environments
-                print(f"{RED}Launching Playwright Chromium browser...{RESET}")
                 browser = p.chromium.launch(
                     headless=True,
                     args=[
@@ -123,11 +123,9 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                         "--disable-gpu"  # Sometimes necessary in headless environments
                     ]
                 )
-                print(f"{RED}Browser launched successfully.{RESET}")
                 page = browser.new_page()
 
                 try:
-                    print(f"{RED}Navigating to {url}...{RESET}")
                     page.goto(url, timeout=playwright_timeout)
 
                     # Wait for the loading element to disappear
@@ -138,7 +136,6 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                             timeout=playwright_timeout
                         )
                         time.sleep(10) # Wait for additional time to ensure the page is fully loaded
-                    print(f"{RED}Page loaded successfully.{RESET}")
 
                     # Take a screenshot
                     page.screenshot(path=screenshot_path, full_page=True)
@@ -146,7 +143,6 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
 
                     html_content_ = page.content()
                     soup = BeautifulSoup(html_content_, 'html.parser')
-                    print(f"{RED}HTML content extracted successfully.{RESET}")
 
                     # Remove the footer element if it exists
                     footer = soup.find('footer')
@@ -154,16 +150,15 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                         footer.decompose()
 
                     body_content = soup.body.prettify() if soup.body else None
-                    print(f"{RED}Body content extracted successfully.{RESET}")
                     return body_content, screenshot_path
 
                 except PlaywrightTimeoutError:
-                    print(
-                        f"Playwright Timeout error ({TIMEOUT}s) or element was not found at {url}.")
+                    print(f"{RED}Playwright Timeout error ({TIMEOUT}s) or element was not found at {url}.{RESET}")
                     return "Timeout error: Element not found or navigation failed.", None
                 finally:
                     # Ensure the browser is closed
                     browser.close()
+                    print(f"{RED} Browser closed. {RESET}")
 
     except Exception as e:
         # Catch any other unexpected errors (e.g., Playwright installation issues)
