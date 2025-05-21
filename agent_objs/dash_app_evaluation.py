@@ -151,11 +151,11 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                         footer.decompose()
 
                     body_content = soup.body.prettify() if soup.body else None
-                    return body_content, screenshot_path
 
                 except PlaywrightTimeoutError:
                     print(f"{RED}Playwright Timeout error ({TIMEOUT}s) or element was not found at {url}.{RESET}")
-                    return "Timeout error: Element not found or navigation failed.", None
+                    body_content = "Timeout error: Element not found or navigation failed."
+                    screenshot_path = None
                 finally:
                     # Ensure the browser is closed
                     browser.close()
@@ -164,8 +164,11 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
     except Exception as e:
         # Catch any other unexpected errors (e.g., Playwright installation issues)
         print(f"An unexpected error occurred: {e}")
-        return f"An unexpected error occurred. {e}", None
+        body_content = f"An unexpected error occurred. {e}"
+        screenshot_path = None
+
     print(f"{RED} Complete 2.{RESET}")
+    return body_content, screenshot_path
 
 
 if __name__ == "__main__":

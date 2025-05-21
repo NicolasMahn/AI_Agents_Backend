@@ -73,9 +73,9 @@ class ReviewingAgentSystem(BaseAgentSystem):
                     break
 
             i += 1
-            print(f"{RED}Warning: Maximum iterations reached. Stopping prompt agent.{RESET}")
 
             if i == self.max_iterations:
+                print(f"{RED}Warning: Maximum iterations reached. Stopping prompt agent.{RESET}")
                 self.chat.add_message("Warning", "Maximum iterations reached. Summarizing, current state of completeness.")
                 self.complete_chat.add_message("Warning", "Maximum iterations reached. Summarizing, current state of completeness.")
                 self.clean_chat.add_message("System", "Maximum iterations reached. Summarizing, current state of completeness.")
