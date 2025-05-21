@@ -16,6 +16,7 @@ TIMEOUT = 10000
 def evaluate_dash_app(port=8050, code_dir="screenshots"):
     try:
         html_body, screenshot_path = get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
+        print(f" {RED}Screenshot and body successfully extracted. | {html_body}, {screenshot_path}.{RESET}")
         if not screenshot_path: # In case of error screenshot_path is None
             return html_body # and html_body is the error message
     except Exception as e:
