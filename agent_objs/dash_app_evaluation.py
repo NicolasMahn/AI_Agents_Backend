@@ -113,50 +113,50 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
 
     try:
         if is_dash_server_responding(port):
-            with sync_playwright() as p:
-                # Launch Chromium browser. You can also use p.firefox.launch() or p.webkit.launch()
-                # Pass necessary arguments for running in Docker/headless environments
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--no-sandbox",  # Necessary for running as root in Docker
-                        '--disable-setuid-sandbox', # Necessary for running as root in Docker
-                        "--disable-dev-shm-usage",  # Overcome limited resource problems
-                        "--disable-gpu"  # Sometimes necessary in headless environments
-                    ]
-                )
-                page = browser.new_page()
+            p = sync_playwright().start()
+            # Launch Chromium browser. You can also use p.firefox.launch() or p.webkit.launch()
+            # Pass necessary arguments for running in Docker/headless environments
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",  # Necessary for running as root in Docker
+                    '--disable-setuid-sandbox', # Necessary for running as root in Docker
+                    "--disable-dev-shm-usage",  # Overcome limited resource problems
+                    "--disable-gpu"  # Sometimes necessary in headless environments
+                ]
+            )
+            page = browser.new_page()
 
-                try:
-                    page.goto(url, timeout=playwright_timeout)
+            try:
+                page.goto(url, timeout=playwright_timeout)
 
-                    # Wait for the loading element to disappear
-                    if loading_element_class:
-                        page.wait_for_function(
-                            f"() => !document.querySelector('.{loading_element_class}') || "
-                            f"getComputedStyle(document.querySelector('.{loading_element_class}')).display === 'none'",
-                            timeout=playwright_timeout
-                        )
-                        time.sleep(10) # Wait for additional time to ensure the page is fully loaded
+                # Wait for the loading element to disappear
+                if loading_element_class:
+                    page.wait_for_function(
+                        f"() => !document.querySelector('.{loading_element_class}') || "
+                        f"getComputedStyle(document.querySelector('.{loading_element_class}')).display === 'none'",
+                        timeout=playwright_timeout
+                    )
+                    time.sleep(10) # Wait for additional time to ensure the page is fully loaded
 
-                    # Take a screenshot
-                    page.screenshot(path=screenshot_path, full_page=True)
-                    print(f"Screenshot saved to {screenshot_path}")
+                # Take a screenshot
+                page.screenshot(path=screenshot_path, full_page=True)
+                print(f"Screenshot saved to {screenshot_path}")
 
-                    html_content_ = page.content()
-                    soup = BeautifulSoup(html_content_, 'html.parser')
+                html_content_ = page.content()
+                soup = BeautifulSoup(html_content_, 'html.parser')
 
-                    # Remove the footer element if it exists
-                    footer = soup.find('footer')
-                    if footer:
-                        footer.decompose()
+                # Remove the footer element if it exists
+                footer = soup.find('footer')
+                if footer:
+                    footer.decompose()
 
-                    body_content = soup.body.prettify() if soup.body else None
+                body_content = soup.body.prettify() if soup.body else None
 
-                except PlaywrightTimeoutError:
-                    print(f"{RED}Playwright Timeout error ({TIMEOUT}s) or element was not found at {url}.{RESET}")
-                    body_content = "Timeout error: Element not found or navigation failed."
-                    screenshot_path = None
+            except PlaywrightTimeoutError:
+                print(f"{RED}Playwright Timeout error ({TIMEOUT}s) or element was not found at {url}.{RESET}")
+                body_content = "Timeout error: Element not found or navigation failed."
+                screenshot_path = None
             try:
                 # Ensure the browser is closed
                 browser.close()
