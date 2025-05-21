@@ -16,12 +16,10 @@ TIMEOUT = 10000
 def evaluate_dash_app(port=8050, code_dir="screenshots"):
     try:
         html_body, screenshot_path = get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
-        print(f" {RED}Screenshot and body successfully extracted. | {html_body}, {screenshot_path}.{RESET}")
         if not screenshot_path: # In case of error screenshot_path is None
             return html_body # and html_body is the error message
     except Exception as e:
         return f"An error occurred while taking the screenshot or extracting the html: {e}"
-    print(f" {RED}Screenshot and body successfully extracted.{RESET}")
     # Get image evaluation of the screenshot
     task = f"""
 Analyze the provided screenshot of a Dash web application. Use the accompanying HTML content to aid your analysis.
@@ -62,7 +60,6 @@ Analyze the provided screenshot of a Dash web application. Use the accompanying 
    - Briefly summarize the apparent state of the application. Does it look functional? Are there any obvious visual glitches, layout problems, or inconsistencies (aside from potential debug errors)?
 """
     image_description = get_image_description(screenshot_path, task)
-    print(f"{RED} {image_description}{RESET}")
     return image_description
 
 
@@ -109,7 +106,7 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
     # Playwright expects timeout in milliseconds
     playwright_timeout = TIMEOUT
     url = f"{DASH_LINK}:{port}"  # Use localhost as Playwright runs on the host accessing the container's exposed port
-
+    body_content = None
 
     try:
         if is_dash_server_responding(port):
@@ -160,19 +157,16 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
             try:
                 # Ensure the browser is closed
                 browser.close()
-                print(f"{RED} Browser closed. {RESET}")
             except Exception as e:
                 print(f"{RED} Error closing browser: {e} {RESET}")
                 body_content = "Error closing browser."
                 screenshot_path = None
-        print(f"{RED} Complete 1.{RESET}")
     except Exception as e:
         # Catch any other unexpected errors (e.g., Playwright installation issues)
         print(f"An unexpected error occurred: {e}")
         body_content = f"An unexpected error occurred. {e}"
         screenshot_path = None
 
-    print(f"{RED} Complete 2.{RESET}")
     return body_content, screenshot_path
 
 
