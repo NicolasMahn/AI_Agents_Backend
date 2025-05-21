@@ -156,10 +156,14 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                     print(f"{RED}Playwright Timeout error ({TIMEOUT}s) or element was not found at {url}.{RESET}")
                     body_content = "Timeout error: Element not found or navigation failed."
                     screenshot_path = None
-                finally:
-                    # Ensure the browser is closed
-                    browser.close()
-                    print(f"{RED} Browser closed. {RESET}")
+            try:
+                # Ensure the browser is closed
+                browser.close()
+                print(f"{RED} Browser closed. {RESET}")
+            except Exception as e:
+                print(f"{RED} Error closing browser: {e} {RESET}")
+                body_content = "Error closing browser."
+                screenshot_path = None
         print(f"{RED} Complete 1.{RESET}")
     except Exception as e:
         # Catch any other unexpected errors (e.g., Playwright installation issues)
