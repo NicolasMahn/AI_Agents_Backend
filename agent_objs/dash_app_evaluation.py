@@ -160,11 +160,12 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                     # Ensure the browser is closed
                     browser.close()
                     print(f"{RED} Browser closed. {RESET}")
-
+        print(f"{RED} Complete 1.{RESET}")
     except Exception as e:
         # Catch any other unexpected errors (e.g., Playwright installation issues)
         print(f"An unexpected error occurred: {e}")
         return f"An unexpected error occurred. {e}", None
+    print(f"{RED} Complete 2.{RESET}")
 
 
 if __name__ == "__main__":
