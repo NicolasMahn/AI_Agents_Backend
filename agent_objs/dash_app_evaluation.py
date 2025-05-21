@@ -120,6 +120,7 @@ def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", lo
                     headless=True,
                     args=[
                         "--no-sandbox",  # Necessary for running as root in Docker
+                        '--disable-setuid-sandbox', # Necessary for running as root in Docker
                         "--disable-dev-shm-usage",  # Overcome limited resource problems
                         "--disable-gpu"  # Sometimes necessary in headless environments
                     ]
