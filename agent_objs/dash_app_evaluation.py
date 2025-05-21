@@ -6,6 +6,7 @@ import requests
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from llm_functions.llm_api_wrapper import get_image_description
+from util.colors import RED, RESET
 
 DASH_LINK = os.getenv("DASH_LINK", "http://localhost")
 
@@ -67,16 +68,19 @@ def is_dash_server_responding(port, retries=10, delay=1):
     url = f"{DASH_LINK}:{port}/"
     for i in range(retries):
         try:
+            print(f"{RED}🔍  Checking if the server is responding on {url}...{RESET}")
             response = requests.get(url, timeout=5)
+            print(f"{RED}🔍  Server responded with status code: {response.status_code}{RESET}")
             if response.status_code >= 200 and response.status_code < 300:
                 return True
 
         except Exception as e:
+            print(f"Error connecting to {url}: {e}")
             pass
 
         if i < retries - 1:
             time.sleep(delay)
-    print(f"Failed to connect to {url} after {retries} attempts.")
+    print(f"{RED}Failed to connect to {url} after {retries} attempts.{RESET}")
     return False
 
 
