@@ -264,9 +264,13 @@ if __name__ == '__main__':
         for file in os.listdir(self.input_dir):
             input_files.append(os.path.join(self.input_dir, file))
 
+        output_files = []
+        for file in os.listdir(self.output_dir):
+            output_files.append(os.path.join(self.output_dir, file))
+
         jsonable_class = [self.code, list(self.requirements),
                           [code_obj.get_name() for code_obj in self.code_imports],
-                          input_files, self.frontend]
+                          input_files, output_files, self.frontend]
         return jsonable_class
 
 
