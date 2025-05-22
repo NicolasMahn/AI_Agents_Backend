@@ -252,8 +252,10 @@ if __name__ == '__main__':
                 f"The Frontend was evaluated with these results:\n"
                 f"{self.dash_evaluation}\n")
         results += (
-            f"Executed Code:\n"
-            f"{self.get_display_code()}\n")
+            f"Executed Code:"
+            f"```python\n"
+            f"{self.get_display_code()}\n"
+            f"```\n")
         print(results)
         return results
 

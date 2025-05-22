@@ -1,9 +1,9 @@
+import asyncio
 import os
 import time
 
 from bs4 import BeautifulSoup
 import requests
-from markdown_it.rules_inline import image
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from llm_functions.llm_api_wrapper import get_image_description
@@ -15,7 +15,11 @@ TIMEOUT = 10000
 
 def evaluate_dash_app(port=8050, code_dir="screenshots"):
     try:
-        html_body, screenshot_path = get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
+        if is_running_in_asyncio():
+            # If running in an asyncio event loop, use the async function
+            html_body, screenshot_path = async_get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
+        else:
+            html_body, screenshot_path = get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
         if not screenshot_path: # In case of error screenshot_path is None
             return html_body # and html_body is the error message
     except Exception as e:
@@ -81,6 +85,18 @@ def is_dash_server_responding(port, retries=10, delay=1):
     print(f"{RED}Failed to connect to {url} after {retries} attempts.{RESET}")
     return False
 
+def is_running_in_asyncio():
+    """Prüft, ob der Code in einer asyncio Event-Loop läuft"""
+    try:
+        loop = asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        # Keine laufende Event-Loop gefunden
+        return False
+
+async def async_get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", loading_element_class="_dash-loading"):
+    # Diese Funktion führt den synchronen Code in einem separaten Thread aus
+    return await asyncio.to_thread(get_dash_code_and_screenshot, port, screenshot_path, loading_element_class)
 
 
 def get_dash_code_and_screenshot(port=8050, screenshot_path="screenshot.png", loading_element_class="_dash-loading"):
