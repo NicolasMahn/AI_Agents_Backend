@@ -27,6 +27,9 @@ class PlanningAgentSystem(BaseAgentSystem):
         super().__init__(system_name, description, agents)
         self.plan = Plan(self)
 
+    def get_plan(self):
+        return self.plan
+
     def prompt_agent(self):
         self.replying = True
         self._prompt = self.clean_chat.get_last_messages_of_sender('User')

@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 
+from util.colors import RED, RESET
 
 
 def execute_commands(commands: list[ET], agent, agent_system) -> dict[str: str]:
@@ -38,7 +39,7 @@ def execute_command(command: ET, agent, agent_system) -> str:
         elif command.tag == "plan" and command_instructions.get("plan").get("active"):
             from tools import execute_plan_command
             return execute_plan_command(command, agent_system)
-        elif command.tag == "next_step" and not agent_system.name == "Reviewing Planning Agent": # This might need to be improved
+        elif command.tag == "next_step" and agent_system.get_name() == "Planning Agent System": # This might need to be improved
             from tools import execute_next_step_command
             return execute_next_step_command(command, agent_system)
         else:

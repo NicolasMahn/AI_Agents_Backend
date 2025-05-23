@@ -54,6 +54,9 @@ class Plan:
     def is_done(self):
         return self.current_step >= len(self.plan)
 
+    def on_last_step(self):
+        return self.current_step == (len(self.plan) - 1)
+
     def get_current_step(self):
         if self.current_step < len(self.plan):
             return self.plan[self.current_step]
