@@ -198,31 +198,6 @@ class BaseAgent:
 
                     "Please add both a tag and a version to your code. as this increases the human readability of the code.\n\n"
 
-                    "### **Reusing Code**\n"
-
-                    "You can reuse previously written code by referencing a code `tag` and optionally a `version`. "
-                    "If no version is provided, the latest version for that tag is used.\n\n"
-
-                    "```xml\n"
-                    "<code tag=\"add\" version=\"1.0\">\n"
-                    "<![CDATA[\n"
-                    "def add(a, b):\n"
-                    "    return a + b\n"
-                    "]]>\n"
-                    "</code>\n"
-                    "```\n\n"
-                    "```xml\n"
-                    "<code import={\"tag\": \"add\"}>\n"
-                    "<![CDATA[\n"
-                    "print(add(3, 4))\n"
-                    "]]>\n"
-                    "</code>\n"
-                    "```\n\n"
-                    "It is also possible to import multiple code snippets by providing a list of tags (`<code import=[{\"tag\": \"add\"}, {\"tag\": \"sub\"}]>...</code>`). "
-
-                    "💡 *Tip:* Work in small, testable code chunks to reduce errors when combining logic.\n\n"
-                    "💡 *Tip:* output files from previous code snippets are available in the `output` directory, *if* they are imported.\n\n"
-
                     "**Important:** When this command (`<code>`) is used it is impossible to reply to the user at the same time as you will have to wait for the results.\n\n"
                 ),
                 "active": True
