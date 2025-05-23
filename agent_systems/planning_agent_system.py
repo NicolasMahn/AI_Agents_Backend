@@ -3,6 +3,7 @@ from agent_systems.base_agent_system import BaseAgentSystem
 from agents.agent import Agent
 from agents.planning_agent import PlanningAgent
 from agents.summarizing_agent import SummarizingAgent
+from tools import execute_next_step_command
 
 
 #deprecated
@@ -26,6 +27,7 @@ class PlanningAgentSystem(BaseAgentSystem):
         agents = [self.planning_agent, self.agent, self.summarizing_agent]
         super().__init__(system_name, description, agents)
         self.plan = Plan(self)
+        self.max_step_iterations = 5
 
     def get_plan(self):
         return self.plan
@@ -64,9 +66,17 @@ class PlanningAgentSystem(BaseAgentSystem):
             self.prompt(entire_prompt, self.planning_agent)
             i += 1
 
+        step_at_iteration = []
         while not self.plan.is_done():
             print(f"Executing prompt {i}")
             step = self.plan.get_current_step()
+            step_at_iteration.append(step)
+            if len(step_at_iteration) > self.max_step_iterations and step == step_at_iteration[-self.max_step_iterations]:
+                print(f"Maximum number of iterations reached for Step.")
+                self.chat.add_message("System", "Maximum number of iterations reached for Step.")
+                self.plan.next_step()
+                continue
+
             message = f"Working on step: {step} ({self.plan.get_current_step_index()+1}/{len(self.plan)})"
             self.clean_chat.add_message("System", message)
             self.chat.add_message("System", message)

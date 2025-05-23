@@ -13,7 +13,6 @@ def execute_commands(commands: list[ET], agent, agent_system) -> dict[str: str]:
 
 def execute_command(command: ET, agent, agent_system) -> str:
     command_instructions = agent.command_instructions
-
     try:
         if command.tag == "short_memory" and command_instructions["short_memory"]["active"]:
             from tools import execute_short_memory_command
