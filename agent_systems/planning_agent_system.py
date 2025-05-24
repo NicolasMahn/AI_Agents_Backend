@@ -4,6 +4,7 @@ from agents.agent import Agent
 from agents.planning_agent import PlanningAgent
 from agents.summarizing_agent import SummarizingAgent
 from tools import execute_next_step_command
+from tools.command_util import extract_xml_elements
 
 
 #deprecated
@@ -28,6 +29,8 @@ class PlanningAgentSystem(BaseAgentSystem):
         super().__init__(system_name, description, agents)
         self.plan = Plan(self)
         self.max_step_iterations = 5
+        self.max_planning_iterations = 5
+        self.force_stop_iterations = 100
 
     def get_plan(self):
         return self.plan
@@ -66,15 +69,25 @@ class PlanningAgentSystem(BaseAgentSystem):
             self.prompt(entire_prompt, self.planning_agent)
             i += 1
 
+            if i > self.max_planning_iterations:
+                print(f"Maximum number of iterations reached for Plan.")
+                self.chat.add_message("System", "Maximum number of iterations reached for Plan.")
+                self.clean_chat.add_message("System", "Maximum number of iterations reached for Plan. Stopping.")
+                self.replying = False
+                self.send_socket_message(f"Prompted agent `{self.get_name()}`. Agent has not replied.")
+                return
+
         step_at_iteration = []
         while not self.plan.is_done():
             print(f"Executing prompt {i}")
             step = self.plan.get_current_step()
             step_at_iteration.append(step)
+
             if len(step_at_iteration) > self.max_step_iterations and step == step_at_iteration[-self.max_step_iterations]:
                 print(f"Maximum number of iterations reached for Step.")
                 self.chat.add_message("System", "Maximum number of iterations reached for Step.")
-                self.plan.next_step()
+                self.clean_chat.add_message("System", "Maximum number of iterations reached for Step. Moving to next Step.")
+                execute_next_step_command(extract_xml_elements("<next_step />")[0], self)
                 continue
 
             message = f"Working on step: {step} ({self.plan.get_current_step_index()+1}/{len(self.plan)})"

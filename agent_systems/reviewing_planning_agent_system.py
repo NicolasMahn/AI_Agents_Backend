@@ -101,7 +101,7 @@ class ReviewingPlanningAgentSystem(BaseAgentSystem):
             self.complete_chat.add_message("System", message)
 
             starting_i = i
-            while (i - starting_i) < self.max_iterations:
+            while True:
                 print(f"Executing prompt {i}  --- On Step: ({self.plan.get_current_step_index()}/{len(self.plan)})")
                 self._prompt = (
                     f"You are executing your plan step-by-step.\n\n"
@@ -137,6 +137,13 @@ class ReviewingPlanningAgentSystem(BaseAgentSystem):
                     if self.critic_agent.requirements_met:
                         self.plan.next_step()
                         break
+                if (i - starting_i) < self.max_iterations:
+                    print(f"Maximum iterations reached for step.")
+                    self.chat.add_message("System", "Maximum iterations reached for step.")
+                    self.clean_chat.add_message("System",
+                                                "Maximum number of iterations reached for Step. Moving to next Step.")
+                    self.plan.next_step()
+                    break
 
         instructions_final_summary = (
             f"**Your Task:** All planned steps have been executed successfully. Provide the complete and final response to the user, synthesizing the results and summarizing the process.\n\n"
