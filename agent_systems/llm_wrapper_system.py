@@ -144,9 +144,9 @@ class LLMWrapperSystem:
             content_type, content_string = upload_contents.split(',')
             decoded = base64.b64decode(content_string)
             try:
-                os.makedirs(os.path.join(self.agent_dir,"uploads"), exist_ok=True)
+                os.makedirs(os.path.join(self.agent_system_dir,"uploads"), exist_ok=True)
                 file_path = f"uploads/{filename}"
-                abs_file_path = os.path.abspath(os.path.join(self.agent_dir,file_path))
+                abs_file_path = os.path.abspath(os.path.join(self.agent_system_dir,file_path))
                 with open(abs_file_path, "wb") as f:
                     f.write(decoded)
                 self.add_message("System", f"Upload of file {file_path} succeeded")
