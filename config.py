@@ -12,7 +12,7 @@ llm_names = {
     "🧠🪙 o3 mini": "o3-mini",
     "🥇📁💰 GPT 4.1 mini (most Intelligent non-Thinking Model)": "gpt-4.1-mini",
     "📁 GPT 4.1 nano": "gpt-4.1-nano",
-    "💰 GPT 4o": "gpt-4o",
+    #"💰 GPT 4o": "gpt-4o",
     "GPT 4o mini": "gpt-4o-mini",
 
     "🧠🏅📁💰💰 Gemini 2.5 Pro (most Intelligent by Google) (Most Expensive in Selection)": "gemini-2.5-pro-preview-03-25",
@@ -47,7 +47,7 @@ max_tokens = {
     "o3-mini": 200_000,
     "gpt-4.1-mini": 1_000_000,
     "gpt-4.1-nano": 1_000_000,
-    "gpt-4o": 128_000,
+    #"gpt-4o": 128_000,
     "gpt-4o-mini": 128_000,
     # ---
     "text-embedding-ada-002": 8192,
@@ -76,7 +76,8 @@ max_tokens = {
 max_tokens["default"] = max_tokens[selected_model]
 
 MODEL_OWNER = {
-    "openai": ["o4-mini-high", "o4-mini", "o3-mini-high", "o3-mini", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini",
+    "openai": ["o4-mini-high", "o4-mini", "o3-mini-high", "o3-mini", "gpt-4.1-mini", "gpt-4.1-nano", #"gpt-4o",
+               "gpt-4o-mini",
                "text-embedding-ada-002"],
     "google": ["gemini-2.5-pro-preview-03-25", "gemini-2.5-flash-preview-04-17",
                "gemini-2.0-flash", "gemini-2.0-flash-lite"],

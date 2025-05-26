@@ -13,9 +13,9 @@ agent_systems = [
     SimpleAgentSystem(),
     ReviewingAgentSystem(),
     ReviewingAgentSystemWithLesserCritic(),
-    ReviewingPlanningAgentSystem(),
-    ReviewingPlanningAgentSystemWithLesserCritic(),
-    PlanningAgentSystem(),
+    # ReviewingPlanningAgentSystem(), Removed as pricey, and not as good as the other systems
+    # ReviewingPlanningAgentSystemWithLesserCritic(),
+    # PlanningAgentSystem(),
 ]
 
 def get_agents():
