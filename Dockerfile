@@ -79,9 +79,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
  && rm -rf /var/lib/apt/lists/*
 
-# Tell Playwright to use system Chromium
-ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin/chromium
-
 ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
 RUN pip install --no-cache-dir huggingface_hub
