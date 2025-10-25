@@ -59,7 +59,33 @@ RUN pip install --no-cache-dir "playwright==1.48.0" && \
 
 ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
-RUN pip install --no-cache-dir huggingface_hub
+# Install Playwright (pinned)
+RUN pip install --no-cache-dir "playwright==1.48.0"
+
+# Install Chromium manually
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-unifont \
+    fonts-ubuntu \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libxss1 \
+    libasound2 \
+    libxshmfence1 \
+    libgbm1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libxfixes3 \
+    libgtk-3-0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    ca-certificates \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Tell Playwright to use system Chromium
+ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin/chromium
 RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
 
