@@ -37,6 +37,7 @@ max_tokens = {
     #"gpt-4o": 128_000,
     "gpt-4o-mini": 128_000,
     "gpt-5": 400_000,
+    "gpt-5-high": 400_000,
     "gpt-5-mini": 400_000,
     "gpt-5-nano": 400_000,
     # ---
@@ -67,7 +68,7 @@ max_tokens["default"] = max_tokens[selected_model]
 
 MODEL_OWNER = {
     "openai": ["o4-mini-high", "o4-mini", "o3-mini-high", "o3-mini", "gpt-4.1-mini", "gpt-4.1-nano", #"gpt-4o",
-               "gpt-4o-mini", "gpt-5", "gpt-5-mini", "gpt-5-nano",
+               "gpt-4o-mini", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-high",
                "text-embedding-ada-002"],
     "google": ["gemini-2.5-pro-preview-03-25", "gemini-2.5-flash-preview-04-17",
                "gemini-2.0-flash", "gemini-2.0-flash-lite"],
