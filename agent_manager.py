@@ -12,7 +12,7 @@ agent_systems = [
     LLMWrapperSystem(),
     SimpleAgentSystem(),
     ReviewingAgentSystem(),
-    ReviewingAgentSystemWithLesserCritic(),
+    # ReviewingAgentSystemWithLesserCritic(), TODO: No Llama 3.3 available for testing currently
     # ReviewingPlanningAgentSystem(), Removed as pricey, and not as good as the other systems
     # ReviewingPlanningAgentSystemWithLesserCritic(),
     # PlanningAgentSystem(),
