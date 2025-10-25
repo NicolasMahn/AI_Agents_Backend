@@ -57,7 +57,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 3️⃣ Install Playwright (pinned) and its managed Chromium
 RUN pip install --no-cache-dir "playwright==1.48.0" && \
-    playwright install --no-deps chromium
+    playwright install chromium
 
 # 4️⃣ Hugging Face authentication
 ARG HUGGING_FACE_KEY
