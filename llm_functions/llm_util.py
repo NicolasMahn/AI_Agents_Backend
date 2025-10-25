@@ -79,11 +79,11 @@ def count_context_length(prompt: str, model: str = "default") -> int:
             num_tokens = client.models.count_tokens(
                 model=model, contents=prompt
             ).total_tokens
-        elif model in MODEL_OWNER["openai"]:
+        elif model in MODEL_OWNER["openai"] and not model.startswith("gpt-5"):
             encoding_name = OPENAI_ENCODING_MAP.get(model)
             encoding = tiktoken.get_encoding(encoding_name)
             num_tokens = len(encoding.encode(prompt))
-        elif model != "lfm-40b":
+        elif model != "lfm-40b" and model not in MODEL_OWNER["openai"]:
             tokenizer = get_tokenizer(model)
             num_tokens = len(tokenizer.encode(prompt, add_special_tokens=False))
         else:

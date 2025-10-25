@@ -16,6 +16,7 @@ llm_names = {
     "GPT 4o mini": "gpt-4o-mini",
 
     "[NEW] GPT 5": "gpt-5",
+    "[NEW] GPT 5 (high)": "gpt-5-high",
     "[NEW] GPT 5 mini": "gpt-5-mini",
     "[NEW] GPT 5 nano": "gpt-5-nano",
 

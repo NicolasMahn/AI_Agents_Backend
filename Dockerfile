@@ -53,7 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     lsb-release \
     xdg-utils
 
-RUN pip install --no-cache-dir "playwright==1.51.0" && \
+RUN pip install --no-cache-dir "playwright==1.48.0" && \
     playwright install --with-deps chromium && \
     playwright install-deps chromium
 
