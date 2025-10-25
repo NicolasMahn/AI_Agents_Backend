@@ -60,7 +60,8 @@ RUN pip install --no-cache-dir "playwright==1.48.0"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     fonts-unifont \
-    fonts-ubuntu \
+    fonts-dejavu-core \
+    fonts-liberation \
     libnss3 \
     libatk-bridge2.0-0 \
     libxss1 \
@@ -76,7 +77,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpangocairo-1.0-0 \
     ca-certificates \
     wget \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
 # Tell Playwright to use system Chromium
 ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin/chromium
