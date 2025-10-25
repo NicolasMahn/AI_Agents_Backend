@@ -54,11 +54,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils
 
 # Install Playwright (pinned)
-RUN pip install --no-cache-dir "playwright==1.48.0"
+RUN pip install --no-cache-dir "playwright==1.48.0" && \
+    playwright install --no-deps chromium
 
 # Install Chromium manually
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
     fonts-unifont \
     fonts-dejavu-core \
     fonts-liberation \
