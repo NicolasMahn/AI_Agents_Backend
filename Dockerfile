@@ -2,23 +2,24 @@
 
 FROM python:3.9-slim
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
-
-
 COPY . /app
 
+# 1️⃣ Upgrade pip & install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-
+# 2️⃣ Install system dependencies required for Playwright / Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
     ca-certificates \
     fonts-liberation \
+    fonts-unifont \
+    fonts-dejavu-core \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -51,40 +52,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxss1 \
     libxtst6 \
     lsb-release \
-    xdg-utils
+    xdg-utils && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Playwright (pinned)
+# 3️⃣ Install Playwright (pinned) and its managed Chromium
 RUN pip install --no-cache-dir "playwright==1.48.0" && \
     playwright install --no-deps chromium
 
-# Install Chromium manually
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-unifont \
-    fonts-dejavu-core \
-    fonts-liberation \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libxss1 \
-    libasound2 \
-    libxshmfence1 \
-    libgbm1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libxfixes3 \
-    libgtk-3-0 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    ca-certificates \
-    wget \
- && rm -rf /var/lib/apt/lists/*
-
+# 4️⃣ Hugging Face authentication
 ARG HUGGING_FACE_KEY
 ENV HUGGING_FACE_KEY=${HUGGING_FACE_KEY}
-RUN pip install --no-cache-dir huggingface_hub
-RUN huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
+RUN pip install --no-cache-dir huggingface_hub && \
+    huggingface-cli login --token ${HUGGING_FACE_KEY} || echo "Hugging Face token not provided"
 
-
+# 5️⃣ Runtime configuration
 EXPOSE 5000
 
 ARG CHROMADB_HOST
@@ -93,10 +74,10 @@ ARG GOOGLE_KEY
 ARG OPENAI_KEY
 ARG LAMBDA_KEY
 
-ENV CHROMADB_HOST=${CHROMADB_HOST}
-ENV CHROMADB_PORT=${CHROMADB_PORT}
-ENV GOOGLE_KEY=${GOOGLE_KEY}
-ENV OPENAI_KEY=${OPENAI_KEY}
-ENV LAMBDA_KEY=${LAMBDA_KEY}
+ENV CHROMADB_HOST=${CHROMADB_HOST} \
+    CHROMADB_PORT=${CHROMADB_PORT} \
+    GOOGLE_KEY=${GOOGLE_KEY} \
+    OPENAI_KEY=${OPENAI_KEY} \
+    LAMBDA_KEY=${LAMBDA_KEY}
 
 CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "-b", "0.0.0.0:5000", "main:app"]
