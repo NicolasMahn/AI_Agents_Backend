@@ -17,13 +17,16 @@ def evaluate_dash_app(port=8050, code_dir="screenshots"):
     try:
         if is_running_in_asyncio():
             # If running in an asyncio event loop, use the async function
-            html_body, screenshot_path = async_get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
+            html_body, screenshot_path = asyncio.run(async_get_dash_code_and_screenshot(
+                port=port,
+                screenshot_path=f"{code_dir}/screenshot.png"
+            ))
         else:
             html_body, screenshot_path = get_dash_code_and_screenshot(port=port, screenshot_path=f"{code_dir}/screenshot.png")
         if not screenshot_path: # In case of error screenshot_path is None
             return html_body # and html_body is the error message
     except Exception as e:
-        return f"An error occurred while taking the screenshot or extracting the html: {e}"
+        return f"An error occurred while taking the screenshot or extracting the html: {e}. \n\n"
     # Get image evaluation of the screenshot
     task = f"""
 Analyze the provided screenshot of a Dash web application. Use the accompanying HTML content to aid your analysis.
